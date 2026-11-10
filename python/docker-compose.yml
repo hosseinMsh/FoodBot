@@ -1,0 +1,10 @@
+services:
+  foodbot:
+    build: .
+    container_name: foodbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./storage.db:/app/storage.db
+    network_mode: "host"

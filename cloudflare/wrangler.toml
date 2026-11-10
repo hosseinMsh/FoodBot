@@ -1,0 +1,24 @@
+name = "foodbot"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Target platform: "telegram" or "bale"
+PLATFORM = "telegram"
+SAMAD_BASE_URL = "https://setad.dining.sharif.edu/"
+SAMAD_BASIC_AUTH = "Basic c2FtYWQtbW9iaWxlOnNhbWFkLW1vYmlsZS1zZWNyZXQ="
+
+# NOTE: Set your BOT_TOKEN securely via Cloudflare Secrets:
+#   npx wrangler secret put BOT_TOKEN
+# For local development with 'wrangler dev', place it in .dev.vars file.
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "foodbot-db"
+database_id = "e187567f-4211-486f-8877-d75c94b64dd4"
+
+# KV Namespace Binding
+[[kv_namespaces]]
+binding = "KV"
+id = "0b1aa93c21754d258913972d7176c86c"

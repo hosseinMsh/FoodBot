@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from samad_client import SamadClient, SamadAPIError
 from handlers.common import check_authenticated
 from date_helper import format_toman
-from config import SAMAD_BASE_URL
+from config import SAMAD_BASE_URL, PAY_SHARIF_URL
 
 
 async def credit_balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -52,9 +52,14 @@ async def credit_balance_command(update: Update, context: ContextTypes.DEFAULT_T
         buttons = [
             [
                 InlineKeyboardButton(
-                    "💳 افزایش آنلاین اعتبار", callback_data="recharge_credit"
+                    "💳 پرداخت مستقیم شریف (pay.sharif.ir)", url=PAY_SHARIF_URL
                 )
-            ]
+            ],
+            [
+                InlineKeyboardButton(
+                    "➕ سایر گزینه‌های شارژ", callback_data="recharge_credit"
+                )
+            ],
         ]
 
         await update.effective_chat.send_message(
@@ -93,13 +98,15 @@ async def increase_credit_command(update: Update, context: ContextTypes.DEFAULT_
             direct_url = f"{base}"
 
         text = (
-            "💳 <b>افزایش آنلاین اعتبار تغذیه</b>\n\n"
-            "برای شارژ حساب و اتصال به درگاه بانکی شتاب، می‌توانید از طریق دکمه زیر بدون نیاز به ورود مجدد رمز، مستقیماً به صفحه شارژ سامانه صمد منتقل شوید.\n\n"
-            "🔹 پس از اتمام پرداخت، موجودی شما بلافاصله به‌روزرسانی شده و در ربات قابل مشاهده خواهد بود."
+            "💳 <b>افزایش آنلاین اعتبار تغذیه صمد</b>\n\n"
+            "برای شارژ مستقیم کیف پول تغذیه دانشگاه، می‌توانید مستقیماً از طریق درگاه مرکزی <b>pay.sharif.ir</b> اقدام کنید.\n\n"
+            "🔹 همچنین در صورت نیاز به ورود به پرتال وب صمد، دکمه ورود سریع با توکن در دسترس است.\n"
+            "🔹 پس از اتمام پرداخت، موجودی حساب شما به‌صورت آنی در ربات به‌روزرسانی خواهد شد."
         )
 
         buttons = [
-            [InlineKeyboardButton("🔗 ورود مستقیم به درگاه پرداخت صمد", url=direct_url)],
+            [InlineKeyboardButton("💳 پرداخت مستقیم شریف (pay.sharif.ir)", url=PAY_SHARIF_URL)],
+            [InlineKeyboardButton("🔗 ورود سریع با توکن به سامانه صمد", url=direct_url)],
             [
                 InlineKeyboardButton(
                     "🔄 بررسی مجدد موجودی", callback_data="check_balance_now"

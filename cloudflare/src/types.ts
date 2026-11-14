@@ -4,6 +4,8 @@ export interface Env {
   BOT_API_ROOT?: string;
   SAMAD_BASE_URL?: string;
   SAMAD_BASIC_AUTH?: string;
+  PAY_SHARIF_URL?: string;
+  MINIAPP_URL?: string;
   DB: D1Database;
   KV: KVNamespace;
 }

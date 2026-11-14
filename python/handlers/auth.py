@@ -1,6 +1,12 @@
 import base64
 import io
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+    WebAppInfo,
+)
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
@@ -10,7 +16,7 @@ from telegram.ext import (
     filters,
 )
 import database
-from config import DEFAULT_USERNAME, DEFAULT_PASSWORD
+from config import DEFAULT_USERNAME, DEFAULT_PASSWORD, MINIAPP_URL
 from samad_client import SamadClient, SamadAPIError
 from handlers.common import (
     get_main_keyboard,
@@ -36,6 +42,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "از طریق دکمه‌های زیر می‌توانید سفارش‌ها، اعتبارات و برنامه‌های غذایی خود را مدیریت کنید."
         )
         await update.message.reply_html(msg, reply_markup=get_main_keyboard())
+        if MINIAPP_URL:
+            app_kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📱 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=MINIAPP_URL))]]
+            )
+            await update.effective_chat.send_message(
+                "🚀 برای رزرو سریع غذا و استفاده از محیط تعاملی، مینی‌اپ را باز کنید:",
+                reply_markup=app_kb,
+            )
     else:
         msg = (
             "سلام! به <b>ربات تغذیه صمد (FoodBot)</b> خوش آمدید 🍽\n\n"
@@ -46,7 +60,31 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons = [
             [InlineKeyboardButton("🔐 ورود به حساب صمد", callback_data="start_login")]
         ]
+        if MINIAPP_URL:
+            buttons.append(
+                [InlineKeyboardButton("📱 ورود و رزرو از طریق مینی‌اپ", web_app=WebAppInfo(url=MINIAPP_URL))]
+            )
         await update.message.reply_html(msg, reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def miniapp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles /app command."""
+    if not MINIAPP_URL:
+        await update.effective_chat.send_message(
+            "⚠️ آدرس مینی‌اپ هنوز در فایل تنظیمات (MINIAPP_URL) تعیین نشده است."
+        )
+        return
+
+    text = (
+        "📱 <b>مینی‌اپ اتوماسیون تغذیه صمد</b>\n\n"
+        "برای رزرو سریع، مدیریت غذاهای هفته، کد تحویل و افزایش اعتبار در محیط وب تلگرام، روی دکمه زیر کلیک کنید:"
+    )
+    buttons = [
+        [InlineKeyboardButton("🍽 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=MINIAPP_URL))]
+    ]
+    await update.effective_chat.send_message(
+        text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 
 async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

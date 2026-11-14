@@ -18,6 +18,7 @@ from config import (
     BOT_API_BASE_URL,
     BOT_API_BASE_FILE_URL,
     PROXY_URL,
+    MINIAPP_URL,
 )
 import database
 
@@ -36,6 +37,7 @@ from handlers.auth import (
     start_command,
     logout_command,
     profile_command,
+    miniapp_command,
     get_login_conversation_handler,
 )
 
@@ -92,6 +94,7 @@ async def post_init(application: Application):
 
     commands = [
         BotCommand("start", "شروع و منوی اصلی"),
+        BotCommand("app", "📱 مینی‌اپ صمد"),
         BotCommand("today", "دریافت غذای امروز و بارکد"),
         BotCommand("nextweek", "برنامه غذایی هفته آینده"),
         BotCommand("remaining", "غذاهای رزرو مانده هفته جاری"),
@@ -108,6 +111,19 @@ async def post_init(application: Application):
         logger.info("Bot commands registered successfully.")
     except Exception as e:
         logger.warning(f"Failed to register bot commands: {e}")
+
+    if MINIAPP_URL:
+        try:
+            from telegram import MenuButtonWebApp, WebAppInfo
+            await application.bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="🍽 مینی‌اپ صمد",
+                    web_app=WebAppInfo(url=MINIAPP_URL),
+                )
+            )
+            logger.info(f"Chat menu button set to Mini App: {MINIAPP_URL}")
+        except Exception as e:
+            logger.warning(f"Failed to set chat menu button: {e}")
 
 
 def parse_args():
@@ -181,6 +197,7 @@ def main():
 
     # Basic Commands
     app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler(["app", "miniapp"], miniapp_command))
     app.add_handler(CommandHandler("logout", logout_command))
     app.add_handler(CommandHandler("profile", profile_command))
     app.add_handler(CommandHandler("whoami", profile_command))

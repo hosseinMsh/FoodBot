@@ -39,12 +39,14 @@ export function getMainKeyboard(): Keyboard {
     .resized();
 }
 
-export function createBot(env: Env, customApiRoot?: string): Bot {
+export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string): Bot {
   const isBale = env.PLATFORM?.toLowerCase() === "bale";
   const apiRoot =
     customApiRoot ||
     env.BOT_API_ROOT ||
     (isBale ? "https://tapi.bale.ai" : "https://api.telegram.org");
+
+  const resolvedWebAppUrl = webAppUrl || env.MINIAPP_URL;
 
   const bot = new Bot(env.BOT_TOKEN, {
     client: {
@@ -84,6 +86,13 @@ export function createBot(env: Env, customApiRoot?: string): Bot {
           "از طریق دکمه‌های زیر می‌توانید سفارش‌ها، اعتبارات و برنامه‌های غذایی خود را مدیریت کنید.",
         { parse_mode: "HTML", reply_markup: getMainKeyboard() }
       );
+
+      if (resolvedWebAppUrl && !isBale) {
+        const appKb = new InlineKeyboard().webApp("📱 باز کردن مینی‌اپ صمد", resolvedWebAppUrl);
+        await ctx.reply("🚀 برای رزرو سریع غذا و مشاهده منو در مینی‌اپ تلگرام، کلیک کنید:", {
+          reply_markup: appKb,
+        });
+      }
     } else {
       const msg =
         "سلام! به <b>ربات تغذیه صمد (نسخه کلودفلر)</b> خوش آمدید 🍽\n\n" +
@@ -91,7 +100,24 @@ export function createBot(env: Env, customApiRoot?: string): Bot {
         "هر کاربر می‌تواند با شماره دانشجویی و رمز اختصاصی خود وارد شود.\n\n" +
         "👇 جهت ورود، روی دکمه زیر کلیک کنید یا دستور /login را ارسال کنید:";
       const kb = new InlineKeyboard().text("🔐 ورود به حساب صمد", "start_login");
+      if (resolvedWebAppUrl && !isBale) {
+        kb.row().webApp("📱 ورود و استفاده از مینی‌اپ", resolvedWebAppUrl);
+      }
       await ctx.reply(msg, { parse_mode: "HTML", reply_markup: kb });
+    }
+  });
+
+  // ---------------- /app (اجرای مینی‌اپ) ----------------
+  bot.command(["app", "miniapp"], async (ctx) => {
+    if (resolvedWebAppUrl && !isBale) {
+      const kb = new InlineKeyboard().webApp("🍽 باز کردن مینی‌اپ صمد", resolvedWebAppUrl);
+      await ctx.reply(
+        "📱 <b>مینی‌اپ اتوماسیون تغذیه صمد</b>\n\n" +
+          "برای مشاهده برنامه هفتگی، رزرو سریع غذا، بارکد تحویل و افزایش مستقیم اعتبار در محیط وب تلگرام، روی دکمه زیر کلیک کنید:",
+        { parse_mode: "HTML", reply_markup: kb }
+      );
+    } else {
+      await ctx.reply("⚠️ آدرس مینی‌اپ تنظیم نشده است یا پلتفرم جاری (بله) از مینی‌اپ پشتیبانی نمی‌کند.");
     }
   });
 
@@ -718,7 +744,11 @@ export function createBot(env: Env, customApiRoot?: string): Bot {
         }
       }
 
-      const kb = new InlineKeyboard().text("💳 افزایش آنلاین اعتبار", "recharge_credit");
+      const payUrl = env.PAY_SHARIF_URL || "https://pay.sharif.ir";
+      const kb = new InlineKeyboard()
+        .url("💳 پرداخت مستقیم شریف (pay.sharif.ir)", payUrl)
+        .row()
+        .text("➕ سایر گزینه‌های شارژ", "recharge_credit");
       await ctx.reply(text, { parse_mode: "HTML", reply_markup: kb });
     } catch (e: any) {
       await ctx.api.deleteMessage(ctx.chat!.id, waitMsg.message_id).catch(() => {});
@@ -741,14 +771,18 @@ export function createBot(env: Env, customApiRoot?: string): Bot {
 
       const base = (env.SAMAD_BASE_URL || "https://setad.dining.sharif.edu/").replace(/\/+$/, "");
       const directUrl = loginToken ? `${base}/#/token-login?token=${loginToken}` : base;
+      const payUrl = env.PAY_SHARIF_URL || "https://pay.sharif.ir";
 
       const text =
-        "💳 <b>افزایش آنلاین اعتبار تغذیه</b>\n\n" +
-        "برای شارژ حساب و اتصال به درگاه بانکی شتاب، می‌توانید از طریق دکمه زیر بدون نیاز به ورود مجدد رمز، مستقیماً به صفحه شارژ سامانه صمد منتقل شوید.\n\n" +
-        "🔹 پس از اتمام پرداخت، موجودی شما بلافاصله به‌روزرسانی خواهد شد.";
+        "💳 <b>افزایش آنلاین اعتبار تغذیه صمد</b>\n\n" +
+        "برای شارژ مستقیم کیف پول تغذیه دانشگاه صنعتی شریف، می‌توانید مستقیماً از طریق درگاه مرکزی <b>pay.sharif.ir</b> اقدام کنید.\n\n" +
+        "🔹 همچنین دکمه ورود سریع با توکن به سامانه صمد در دسترس است.\n" +
+        "🔹 پس از اتمام پرداخت، موجودی حساب شما به‌صورت آنی به‌روزرسانی خواهد شد.";
 
       const kb = new InlineKeyboard()
-        .url("🔗 ورود مستقیم به درگاه پرداخت صمد", directUrl)
+        .url("💳 پرداخت مستقیم شریف (pay.sharif.ir)", payUrl)
+        .row()
+        .url("🔗 ورود سریع با توکن به سامانه صمد", directUrl)
         .row()
         .text("🔄 بررسی مجدد موجودی", "check_balance_now");
 

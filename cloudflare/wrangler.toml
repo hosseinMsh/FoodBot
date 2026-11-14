@@ -7,6 +7,7 @@ compatibility_date = "2024-11-01"
 PLATFORM = "telegram"
 SAMAD_BASE_URL = "https://setad.dining.sharif.edu/"
 SAMAD_BASIC_AUTH = "Basic c2FtYWQtbW9iaWxlOnNhbWFkLW1vYmlsZS1zZWNyZXQ="
+PAY_SHARIF_URL = "https://pay.sharif.ir"
 
 # NOTE: Set your BOT_TOKEN securely via Cloudflare Secrets:
 #   npx wrangler secret put BOT_TOKEN

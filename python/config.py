@@ -45,8 +45,8 @@ VERIFY_SSL = os.getenv("VERIFY_SSL", "False").lower() in ("true", "1", "yes")
 # Proxy settings (for connecting to Telegram API in Iran; usually not needed for Bale)
 PROXY_URL = os.getenv("PROXY_URL", "").strip()
 
-# Sharif Central Payment Gateway URL (Direct dining recharge)
-PAY_SHARIF_URL = os.getenv("PAY_SHARIF_URL", "https://pay.sharif.ir").strip()
+# Sharif Central Payment Gateway URL (Direct Rose dining recharge)
+PAY_SHARIF_URL = os.getenv("PAY_SHARIF_URL", "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose").strip()
 
 # Optional Telegram Mini App URL (e.g. Cloudflare Worker URL https://<worker>.workers.dev/app)
 MINIAPP_URL = os.getenv("MINIAPP_URL", "").strip()

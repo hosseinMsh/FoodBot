@@ -48,6 +48,13 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
 
   const resolvedWebAppUrl = webAppUrl || env.MINIAPP_URL;
 
+  function getUserWebAppUrl(telegramId?: number): string | undefined {
+    if (!resolvedWebAppUrl) return undefined;
+    if (!telegramId) return resolvedWebAppUrl;
+    const sep = resolvedWebAppUrl.includes("?") ? "&" : "?";
+    return `${resolvedWebAppUrl}${sep}user_id=${telegramId}`;
+  }
+
   const bot = new Bot(env.BOT_TOKEN, {
     client: {
       apiRoot,
@@ -65,6 +72,10 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
         "⚠️ <b>شما هنوز وارد حساب سامانه صمد خود نشده‌اید.</b>\n\n" +
         "برای اتصال به سامانه صمد، روی دکمه زیر کلیک کنید یا دستور /login را ارسال نمایید:";
       const kb = new InlineKeyboard().text("🔐 ورود به حساب صمد", "start_login");
+      const userAppUrl = getUserWebAppUrl(telegramId);
+      if (userAppUrl && !isBale) {
+        kb.row().webApp("📱 ورود و استفاده از مینی‌اپ", userAppUrl);
+      }
       await ctx.reply(msg, { parse_mode: "HTML", reply_markup: kb });
       return null;
     }
@@ -87,8 +98,9 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
         { parse_mode: "HTML", reply_markup: getMainKeyboard() }
       );
 
-      if (resolvedWebAppUrl && !isBale) {
-        const appKb = new InlineKeyboard().webApp("📱 باز کردن مینی‌اپ صمد", resolvedWebAppUrl);
+      const userAppUrl = getUserWebAppUrl(user.telegram_id);
+      if (userAppUrl && !isBale) {
+        const appKb = new InlineKeyboard().webApp("📱 باز کردن مینی‌اپ صمد", userAppUrl);
         await ctx.reply("🚀 برای رزرو سریع غذا و مشاهده منو در مینی‌اپ تلگرام، کلیک کنید:", {
           reply_markup: appKb,
         });
@@ -100,8 +112,9 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
         "هر کاربر می‌تواند با شماره دانشجویی و رمز اختصاصی خود وارد شود.\n\n" +
         "👇 جهت ورود، روی دکمه زیر کلیک کنید یا دستور /login را ارسال کنید:";
       const kb = new InlineKeyboard().text("🔐 ورود به حساب صمد", "start_login");
-      if (resolvedWebAppUrl && !isBale) {
-        kb.row().webApp("📱 ورود و استفاده از مینی‌اپ", resolvedWebAppUrl);
+      const userAppUrl = getUserWebAppUrl(telegramId);
+      if (userAppUrl && !isBale) {
+        kb.row().webApp("📱 ورود و استفاده از مینی‌اپ", userAppUrl);
       }
       await ctx.reply(msg, { parse_mode: "HTML", reply_markup: kb });
     }
@@ -109,8 +122,10 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
 
   // ---------------- /app (اجرای مینی‌اپ) ----------------
   bot.command(["app", "miniapp"], async (ctx) => {
-    if (resolvedWebAppUrl && !isBale) {
-      const kb = new InlineKeyboard().webApp("🍽 باز کردن مینی‌اپ صمد", resolvedWebAppUrl);
+    const telegramId = ctx.from?.id;
+    const userAppUrl = getUserWebAppUrl(telegramId);
+    if (userAppUrl && !isBale) {
+      const kb = new InlineKeyboard().webApp("🍽 باز کردن مینی‌اپ صمد", userAppUrl);
       await ctx.reply(
         "📱 <b>مینی‌اپ اتوماسیون تغذیه صمد</b>\n\n" +
           "برای مشاهده برنامه هفتگی، رزرو سریع غذا، بارکد تحویل و افزایش مستقیم اعتبار در محیط وب تلگرام، روی دکمه زیر کلیک کنید:",
@@ -744,9 +759,19 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
         }
       }
 
-      const payUrl = env.PAY_SHARIF_URL || "https://pay.sharif.ir";
+      let loginToken = "";
+      try {
+        loginToken = await client.getLoginToken();
+      } catch {}
+
+      const basePayUrl = env.PAY_SHARIF_URL || "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose";
+      const sep = basePayUrl.includes("?") ? "&" : "?";
+      const chargeUrl = loginToken
+        ? `${basePayUrl}${sep}token=${loginToken}&loginToken=${loginToken}&loginAsToken=${loginToken}`
+        : basePayUrl;
+
       const kb = new InlineKeyboard()
-        .url("💳 پرداخت مستقیم شریف (pay.sharif.ir)", payUrl)
+        .url("💳 افزایش مستقیم اعتبار (view.rose)", chargeUrl)
         .row()
         .text("➕ سایر گزینه‌های شارژ", "recharge_credit");
       await ctx.reply(text, { parse_mode: "HTML", reply_markup: kb });
@@ -764,23 +789,31 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
     const client = await getClient(ctx);
     if (!client) return;
 
-    const waitMsg = await ctx.reply("⏳ در حال ایجاد لینک ورود مستقیم به درگاه پرداخت صمد...");
+    const waitMsg = await ctx.reply("⏳ در حال ایجاد لینک ورود مستقیم به صفحه افزایش اعتبار صمد...");
     try {
-      const loginToken = await client.getLoginToken();
+      let loginToken = "";
+      try {
+        loginToken = await client.getLoginToken();
+      } catch {}
       await ctx.api.deleteMessage(ctx.chat!.id, waitMsg.message_id).catch(() => {});
 
       const base = (env.SAMAD_BASE_URL || "https://setad.dining.sharif.edu/").replace(/\/+$/, "");
       const directUrl = loginToken ? `${base}/#/token-login?token=${loginToken}` : base;
-      const payUrl = env.PAY_SHARIF_URL || "https://pay.sharif.ir";
+      const basePayUrl = env.PAY_SHARIF_URL || "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose";
+      const sep = basePayUrl.includes("?") ? "&" : "?";
+      const chargeUrl = loginToken
+        ? `${basePayUrl}${sep}token=${loginToken}&loginToken=${loginToken}&loginAsToken=${loginToken}`
+        : basePayUrl;
 
       const text =
         "💳 <b>افزایش آنلاین اعتبار تغذیه صمد</b>\n\n" +
-        "برای شارژ مستقیم کیف پول تغذیه دانشگاه صنعتی شریف، می‌توانید مستقیماً از طریق درگاه مرکزی <b>pay.sharif.ir</b> اقدام کنید.\n\n" +
-        "🔹 همچنین دکمه ورود سریع با توکن به سامانه صمد در دسترس است.\n" +
-        "🔹 پس از اتمام پرداخت، موجودی حساب شما به‌صورت آنی به‌روزرسانی خواهد شد.";
+        "برای شارژ مستقیم کیف پول تغذیه دانشگاه صنعتی شریف، می‌توانید مستقیماً از طریق صفحه پرداخت صمد (view.rose) اقدام کنید.\n\n" +
+        "🔹 توکن و مشخصات نشست شما در دکمه زیر تعبیه شده تا مستقیماً به صفحه پرداخت متصل به حساب خودتان هدایت شوید.\n" +
+        "🔹 همچنین دکمه ورود سریع با توکن به وب صمد در دسترس است.\n" +
+        "🔹 پس از اتمام پرداخت، موجودی حساب شما به‌صورت آنی در ربات به‌روزرسانی خواهد شد.";
 
       const kb = new InlineKeyboard()
-        .url("💳 پرداخت مستقیم شریف (pay.sharif.ir)", payUrl)
+        .url("💳 ورود مستقیم به صفحه افزایش اعتبار (view.rose)", chargeUrl)
         .row()
         .url("🔗 ورود سریع با توکن به سامانه صمد", directUrl)
         .row()

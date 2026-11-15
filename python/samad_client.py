@@ -264,8 +264,8 @@ class SamadClient:
         """GET /rest/users/me/login-token"""
         data = await self._request("GET", "/rest/users/me/login-token")
         if isinstance(data, dict):
-            return data.get("loginToken", "")
-        return str(data)
+            return data.get("loginAsToken") or data.get("loginToken") or data.get("token") or ""
+        return str(data or "")
 
     async def get_available_selfs(self) -> List[Dict[str, Any]]:
         """GET /rest/reservations/selfs"""

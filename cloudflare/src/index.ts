@@ -4,6 +4,7 @@ import { createBot } from "./bot";
 import { renderMiniAppHtml } from "./miniapp";
 import * as db from "./db";
 import { SamadClient } from "./samad";
+import { TELEGRAM_WEB_APP_JS } from "./telegramSdk";
 import {
   getCurrentWeekSaturdayStr,
   getNextWeekSaturdayStr,
@@ -50,7 +51,41 @@ export default {
     const defaultPlatform = env.PLATFORM?.toLowerCase() === "bale" ? "bale" : "telegram";
     const apiRoot = env.BOT_API_ROOT || (isBale ? "https://tapi.bale.ai" : "https://api.telegram.org");
     const webAppUrl = env.MINIAPP_URL || `${url.origin}/app`;
-    const payUrl = env.PAY_SHARIF_URL || "https://pay.sharif.ir";
+    const payUrl = env.PAY_SHARIF_URL || "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose";
+
+    // ==========================================
+    // 0. Static Telegram WebApp SDK (Anti-censorship in Iran)
+    // ==========================================
+    if (path === "/telegram-web-app.js" || path === "/js/telegram-web-app.js") {
+      return new Response(TELEGRAM_WEB_APP_JS, {
+        headers: {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=604800, immutable",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+
+    // ==========================================
+    // Direct Rose Credit Charge Redirect: /charge, /charge-redirect
+    // ==========================================
+    if ((path === "/charge" || path === "/charge-redirect") && request.method === "GET") {
+      const telegramId = parseInt(url.searchParams.get("user_id") || url.searchParams.get("id") || "0", 10);
+      let targetUrl = payUrl;
+      if (telegramId) {
+        try {
+          const client = await SamadClient.forUser(env, telegramId);
+          if (client) {
+            const token = await client.getLoginToken();
+            if (token) {
+              const sep = targetUrl.includes("?") ? "&" : "?";
+              targetUrl = `${targetUrl}${sep}token=${token}&loginToken=${token}&loginAsToken=${token}`;
+            }
+          }
+        } catch {}
+      }
+      return Response.redirect(targetUrl, 302);
+    }
 
     // ==========================================
     // 1. Webhook endpoints: /webhook, /webhook/telegram, /webhook/bale
@@ -126,9 +161,19 @@ export default {
     // POST /api/login - Log into Samad & save session
     if (path === "/api/login" && request.method === "POST") {
       const body: any = await request.json().catch(() => ({}));
-      const telegramId = parseInt(body.telegram_id || "0", 10);
+      let telegramId = parseInt(body.telegram_id || "0", 10);
+      if (!telegramId && body.username) {
+        // Fallback: Check if user already exists in D1
+        const existing = await db.getUserByUsername(env.DB, body.username);
+        if (existing) {
+          telegramId = existing.telegram_id;
+        } else {
+          const num = parseInt(String(body.username).replace(/\D/g, ""), 10);
+          if (num && num > 1000) telegramId = num;
+        }
+      }
       if (!telegramId || !body.username || !body.password) {
-        return jsonResponse({ success: false, message: "اطلاعات فرم ناقص است" }, 400);
+        return jsonResponse({ success: false, message: "اطلاعات فرم ناقص است (شناسه کاربری یافت نشد)" }, 400);
       }
 
       const tempUser: any = {
@@ -335,6 +380,10 @@ export default {
 
         const base = (env.SAMAD_BASE_URL || "https://setad.dining.sharif.edu/").replace(/\/+$/, "");
         const loginTokenUrl = loginToken ? `${base}/#/token-login?token=${loginToken}` : base;
+        const sep = payUrl.includes("?") ? "&" : "?";
+        const chargeWithTokenUrl = loginToken
+          ? `${payUrl}${sep}token=${loginToken}&loginToken=${loginToken}&loginAsToken=${loginToken}`
+          : payUrl;
 
         const items = Array.isArray(nurture.items) ? nurture.items : [];
         const txs = items.map((it: any) => ({
@@ -347,7 +396,9 @@ export default {
           success: true,
           credit_rials: currentCreditRials,
           credit_toman: creditToman,
-          pay_url: payUrl,
+          pay_url: chargeWithTokenUrl,
+          direct_rose_url: chargeWithTokenUrl,
+          charge_url: chargeWithTokenUrl,
           loginTokenUrl,
           transactions: txs,
         });

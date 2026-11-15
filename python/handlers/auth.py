@@ -28,6 +28,15 @@ from date_helper import format_toman
 WAITING_USERNAME, WAITING_PASSWORD, WAITING_CAPTCHA = range(3)
 
 
+def get_user_miniapp_url(user_id: int = None) -> str:
+    if not MINIAPP_URL:
+        return ""
+    if not user_id:
+        return MINIAPP_URL
+    sep = "&" if "?" in MINIAPP_URL else "?"
+    return f"{MINIAPP_URL}{sep}user_id={user_id}"
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /start command."""
     telegram_id = update.effective_user.id
@@ -42,9 +51,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "از طریق دکمه‌های زیر می‌توانید سفارش‌ها، اعتبارات و برنامه‌های غذایی خود را مدیریت کنید."
         )
         await update.message.reply_html(msg, reply_markup=get_main_keyboard())
-        if MINIAPP_URL:
+        user_miniapp_url = get_user_miniapp_url(telegram_id)
+        if user_miniapp_url:
             app_kb = InlineKeyboardMarkup(
-                [[InlineKeyboardButton("📱 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=MINIAPP_URL))]]
+                [[InlineKeyboardButton("📱 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=user_miniapp_url))]]
             )
             await update.effective_chat.send_message(
                 "🚀 برای رزرو سریع غذا و استفاده از محیط تعاملی، مینی‌اپ را باز کنید:",
@@ -60,16 +70,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons = [
             [InlineKeyboardButton("🔐 ورود به حساب صمد", callback_data="start_login")]
         ]
-        if MINIAPP_URL:
+        user_miniapp_url = get_user_miniapp_url(telegram_id)
+        if user_miniapp_url:
             buttons.append(
-                [InlineKeyboardButton("📱 ورود و رزرو از طریق مینی‌اپ", web_app=WebAppInfo(url=MINIAPP_URL))]
+                [InlineKeyboardButton("📱 ورود و رزرو از طریق مینی‌اپ", web_app=WebAppInfo(url=user_miniapp_url))]
             )
         await update.message.reply_html(msg, reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def miniapp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /app command."""
-    if not MINIAPP_URL:
+    telegram_id = update.effective_user.id if update.effective_user else None
+    user_miniapp_url = get_user_miniapp_url(telegram_id)
+    if not user_miniapp_url:
         await update.effective_chat.send_message(
             "⚠️ آدرس مینی‌اپ هنوز در فایل تنظیمات (MINIAPP_URL) تعیین نشده است."
         )
@@ -80,7 +93,7 @@ async def miniapp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "برای رزرو سریع، مدیریت غذاهای هفته، کد تحویل و افزایش اعتبار در محیط وب تلگرام، روی دکمه زیر کلیک کنید:"
     )
     buttons = [
-        [InlineKeyboardButton("🍽 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=MINIAPP_URL))]
+        [InlineKeyboardButton("🍽 باز کردن مینی‌اپ صمد", web_app=WebAppInfo(url=user_miniapp_url))]
     ]
     await update.effective_chat.send_message(
         text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons)

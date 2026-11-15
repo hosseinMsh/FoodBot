@@ -4,14 +4,14 @@
  * Loads in < 100ms with zero heavy framework bloat.
  */
 
-export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): string {
+export function renderMiniAppHtml(payUrl: string = "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose"): string {
   return `<!DOCTYPE html>
 <html dir="rtl" lang="fa">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>سامانه تغذیه صمد - FoodBot</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <style>
@@ -327,9 +327,9 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
     <!-- Quick Recharge Card -->
     <div class="card" style="background: linear-gradient(135deg, rgba(5,150,105,0.15) 0%, rgba(2,132,199,0.15) 100%); border-color: rgba(16,185,129,0.25);">
       <div class="card-title" style="margin-bottom: 8px;">💳 شارژ سریع حساب تغذیه</div>
-      <p style="font-size: 12px; color: var(--hint); margin-bottom: 12px;">اتصال مستقیم به سامانه متمرکز پرداخت دانشگاه صنعتی شریف (pay.sharif.ir) متصل به حساب صمد</p>
+      <p style="font-size: 12px; color: var(--hint); margin-bottom: 12px;">اتصال مستقیم به صفحه افزایش اعتبار سامانه صمد (view.rose) همراه با توکن ورود اختصاصی</p>
       <button class="btn btn-pay" onclick="openDirectPayment()">
-        💳 افزایش مستقیم اعتبار در pay.sharif.ir
+        💳 ورود به صفحه افزایش اعتبار (view.rose)
       </button>
     </div>
   </div>
@@ -371,7 +371,7 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
 
       <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
         <button class="btn btn-pay" onclick="openDirectPayment()">
-          💳 افزایش اعتبار در pay.sharif.ir
+          💳 ورود به درگاه افزایش اعتبار (view.rose)
         </button>
         <button class="btn btn-secondary" onclick="openSamadTokenLogin()">
           🔗 ورود سریع به وب سامانه صمد
@@ -494,13 +494,15 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
     // Initialize Telegram WebApp
     const tg = window.Telegram?.WebApp;
     if (tg) {
-      tg.ready();
-      tg.expand();
-      try { tg.enableClosingConfirmation(); } catch(e){}
+      try {
+        tg.ready();
+        tg.expand();
+        tg.enableClosingConfirmation();
+      } catch(e){}
     }
 
     // Config & Global State
-    const PAY_SHARIF_URL = "${payUrl}";
+    let PAY_SHARIF_URL = "${payUrl}";
     let currentTelegramId = null;
     let currentUser = null;
     let currentSelfs = [];
@@ -509,16 +511,65 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
     let weeklyProgramsData = [];
     let captchaData = null;
 
-    // Detect Telegram User
+    // Detect Telegram User (Multi-stage fallback strategy)
     function getTelegramId() {
-      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      // 1. Check tg.initDataUnsafe
+      if (tg?.initDataUnsafe?.user?.id) {
         return tg.initDataUnsafe.user.id;
       }
-      const p = new URLSearchParams(window.location.search);
-      return p.get("user_id") || p.get("id") || 0;
+
+      // 2. Check tg.initData parsed
+      if (tg?.initData) {
+        try {
+          const params = new URLSearchParams(tg.initData);
+          const uStr = params.get("user");
+          if (uStr) {
+            const u = JSON.parse(uStr);
+            if (u && u.id) return u.id;
+          }
+        } catch (e) {}
+      }
+
+      // 3. Check window.location.hash (#tgWebAppData=...)
+      try {
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+          const hashParams = new URLSearchParams(hash);
+          const rawData = hashParams.get("tgWebAppData");
+          if (rawData) {
+            const dataParams = new URLSearchParams(rawData);
+            const uStr = dataParams.get("user");
+            if (uStr) {
+              const u = JSON.parse(uStr);
+              if (u && u.id) return u.id;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 4. Check query params (?user_id=... or ?id=...)
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const queryId = p.get("user_id") || p.get("id");
+        if (queryId) return parseInt(queryId, 10);
+      } catch (e) {}
+
+      // 5. Check localStorage
+      try {
+        const savedId = localStorage.getItem("foodbot_telegram_id");
+        if (savedId) {
+          const parsed = parseInt(savedId, 10);
+          if (parsed && parsed > 0) return parsed;
+        }
+      } catch (e) {}
+
+      return 0;
     }
 
     currentTelegramId = getTelegramId();
+    if (currentTelegramId && currentTelegramId > 0) {
+      try { localStorage.setItem("foodbot_telegram_id", String(currentTelegramId)); } catch(e){}
+    }
 
     function haptic(type = "light") {
       if (tg?.HapticFeedback) {
@@ -554,13 +605,14 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
       }
     }
 
-    // Open direct pay.sharif.ir
+    // Open direct Rose credit charge page
     function openDirectPayment() {
       haptic("impact");
+      const targetUrl = PAY_SHARIF_URL || \`/charge?user_id=\${currentTelegramId}\`;
       if (tg && tg.openLink) {
-        tg.openLink(PAY_SHARIF_URL);
+        tg.openLink(targetUrl);
       } else {
-        window.open(PAY_SHARIF_URL, "_blank");
+        window.open(targetUrl, "_blank");
       }
     }
 
@@ -855,6 +907,9 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
         const res = await fetch(\`/api/credit?user_id=\${currentTelegramId}\`);
         const data = await res.json();
         if (data.success) {
+          if (data.pay_url) {
+            PAY_SHARIF_URL = data.pay_url;
+          }
           const tomanStr = (data.credit_toman || 0).toLocaleString("fa-IR") + " ت";
           document.getElementById("head-balance-toman").innerText = tomanStr;
           document.getElementById("wallet-balance-toman").innerText = (data.credit_toman || 0).toLocaleString("fa-IR") + " تومان";
@@ -931,6 +986,8 @@ export function renderMiniAppHtml(payUrl: string = "https://pay.sharif.ir"): str
         const data = await res.json();
         if (data.success && data.user) {
           currentUser = data.user;
+          currentTelegramId = data.user.telegram_id;
+          try { localStorage.setItem("foodbot_telegram_id", String(currentTelegramId)); } catch(e){}
           document.getElementById("login-modal").classList.remove("show");
           showToast("ورود با موفقیت انجام شد 🎉");
           renderUserInfo(currentUser);

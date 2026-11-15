@@ -49,10 +49,24 @@ async def credit_balance_command(update: Update, context: ContextTypes.DEFAULT_T
         else:
             text += "<i>هیچ تراکنش اخیری ثبت نشده است.</i>\n"
 
+        # Try to get login token for seamless payment redirect
+        login_token = ""
+        try:
+            login_token = await client.get_login_token()
+        except Exception:
+            pass
+
+        sep = "&" if "?" in PAY_SHARIF_URL else "?"
+        charge_url = (
+            f"{PAY_SHARIF_URL}{sep}token={login_token}&loginToken={login_token}&loginAsToken={login_token}"
+            if login_token
+            else PAY_SHARIF_URL
+        )
+
         buttons = [
             [
                 InlineKeyboardButton(
-                    "💳 پرداخت مستقیم شریف (pay.sharif.ir)", url=PAY_SHARIF_URL
+                    "💳 افزایش مستقیم اعتبار (view.rose)", url=charge_url
                 )
             ],
             [
@@ -83,7 +97,7 @@ async def increase_credit_command(update: Update, context: ContextTypes.DEFAULT_
         return
 
     status_msg = await update.effective_chat.send_message(
-        "⏳ در حال ایجاد لینک ورود مستقیم به درگاه پرداخت سامانه صمد..."
+        "⏳ در حال ایجاد لینک ورود مستقیم به صفحه افزایش اعتبار صمد..."
     )
 
     try:
@@ -94,18 +108,22 @@ async def increase_credit_command(update: Update, context: ContextTypes.DEFAULT_
         base = SAMAD_BASE_URL.rstrip("/")
         if login_token:
             direct_url = f"{base}/#/token-login?token={login_token}"
+            sep = "&" if "?" in PAY_SHARIF_URL else "?"
+            charge_url = f"{PAY_SHARIF_URL}{sep}token={login_token}&loginToken={login_token}&loginAsToken={login_token}"
         else:
             direct_url = f"{base}"
+            charge_url = PAY_SHARIF_URL
 
         text = (
             "💳 <b>افزایش آنلاین اعتبار تغذیه صمد</b>\n\n"
-            "برای شارژ مستقیم کیف پول تغذیه دانشگاه، می‌توانید مستقیماً از طریق درگاه مرکزی <b>pay.sharif.ir</b> اقدام کنید.\n\n"
-            "🔹 همچنین در صورت نیاز به ورود به پرتال وب صمد، دکمه ورود سریع با توکن در دسترس است.\n"
+            "برای شارژ مستقیم کیف پول تغذیه دانشگاه صنعتی شریف، می‌توانید از طریق صفحه پرداخت صمد (view.rose) اقدام کنید.\n\n"
+            "🔹 توکن اختصاصی شما در دکمه زیر قرار گرفته تا مستقیماً به صفحه پرداخت با هویت حساب خود متصل شوید.\n"
+            "🔹 همچنین دکمه ورود سریع با توکن به سامانه صمد در دسترس است.\n"
             "🔹 پس از اتمام پرداخت، موجودی حساب شما به‌صورت آنی در ربات به‌روزرسانی خواهد شد."
         )
 
         buttons = [
-            [InlineKeyboardButton("💳 پرداخت مستقیم شریف (pay.sharif.ir)", url=PAY_SHARIF_URL)],
+            [InlineKeyboardButton("💳 ورود مستقیم به صفحه افزایش اعتبار (view.rose)", url=charge_url)],
             [InlineKeyboardButton("🔗 ورود سریع با توکن به سامانه صمد", url=direct_url)],
             [
                 InlineKeyboardButton(

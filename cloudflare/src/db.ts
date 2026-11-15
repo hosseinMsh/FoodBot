@@ -80,6 +80,14 @@ export async function updateUserProfile(
     .run();
 }
 
+export async function getUserByUsername(db: D1Database, username: string): Promise<User | null> {
+  const result = await db
+    .prepare("SELECT * FROM users WHERE username = ?")
+    .bind(username)
+    .first<User>();
+  return result || null;
+}
+
 export async function deleteUser(db: D1Database, telegramId: number): Promise<void> {
   await db.prepare("DELETE FROM users WHERE telegram_id = ?").bind(telegramId).run();
 }

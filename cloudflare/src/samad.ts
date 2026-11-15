@@ -254,7 +254,7 @@ export class SamadClient {
   async getLoginToken(): Promise<string> {
     const data = await this.request("GET", "rest/users/me/login-token");
     if (data && typeof data === "object") {
-      return data.loginToken || "";
+      return data.loginAsToken || data.loginToken || data.token || "";
     }
     return String(data || "");
   }

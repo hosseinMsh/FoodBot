@@ -88,6 +88,27 @@ export async function getUserByUsername(db: D1Database, username: string): Promi
   return result || null;
 }
 
+export async function getAutoSendUsers(db: D1Database): Promise<User[]> {
+  const result = await db
+    .prepare(
+      "SELECT * FROM users WHERE access_token IS NOT NULL AND access_token != '' AND (auto_send_code IS NULL OR auto_send_code != 0)"
+    )
+    .all<User>();
+  return result.results || [];
+}
+
+export async function setAutoSendCode(
+  db: D1Database,
+  telegramId: number,
+  enabled: boolean
+): Promise<void> {
+  const now = Date.now() / 1000;
+  await db
+    .prepare("UPDATE users SET auto_send_code = ?, updated_at = ? WHERE telegram_id = ?")
+    .bind(enabled ? 1 : 0, now, telegramId)
+    .run();
+}
+
 export async function deleteUser(db: D1Database, telegramId: number): Promise<void> {
   await db.prepare("DELETE FROM users WHERE telegram_id = ?").bind(telegramId).run();
 }

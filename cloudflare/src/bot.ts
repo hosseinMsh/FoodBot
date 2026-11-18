@@ -7,6 +7,7 @@ import { SamadClient, SamadError } from "./samad";
 import {
   getCurrentWeekSaturdayStr,
   getNextWeekSaturdayStr,
+  getTehranTodayInfo,
   formatToman,
   normalizeWeeklyPrograms,
   toJalaliStr,
@@ -197,6 +198,10 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
       const studentInfo = profile.student || {};
       const major = studentInfo.studyMajor?.name || "نامشخص";
       const level = studentInfo.studyLevel?.name || "نامشخص";
+      const autoSendEnabled = userDb?.auto_send_code !== 0;
+      const autoSendStatus = autoSendEnabled
+        ? "✅ فعال (ساعت ۱۱ صبح، شنبه تا چهارشنبه)"
+        : "🔕 غیرفعال";
 
       const msg =
         "👤 <b>اطلاعات حساب کاربری</b>\n\n" +
@@ -204,10 +209,16 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
         `▫️ <b>شماره دانشجویی:</b> <code>${studentId}</code>\n` +
         `▫️ <b>مقطع و رشته:</b> ${level} - ${major}\n` +
         `▫️ <b>سلف پیش‌فرض:</b> ${selfName}\n` +
-        `▫️ <b>موجودی اعتبار:</b> ${formatToman(credit)}\n\n` +
+        `▫️ <b>موجودی اعتبار:</b> ${formatToman(credit)}\n` +
+        `▫️ <b>ارسال خودکار کد تحویل:</b> ${autoSendStatus}\n\n` +
         "برای تغییر سلف از دکمه «⚙️ انتخاب سلف» استفاده نمایید.";
 
-      await ctx.reply(msg, { parse_mode: "HTML" });
+      const kb = new InlineKeyboard().text(
+        autoSendEnabled ? "🔕 غیرفعال کردن ارسال خودکار ساعت ۱۱" : "🔔 فعال کردن ارسال خودکار ساعت ۱۱",
+        "toggle_autocode"
+      );
+
+      await ctx.reply(msg, { parse_mode: "HTML", reply_markup: kb });
     } catch (e: any) {
       await ctx.reply(`❌ خطا در دریافت اطلاعات: ${e.message}`);
     }
@@ -217,6 +228,48 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
   bot.command("whoami", handleProfile);
   bot.hears(BTN_PROFILE, handleProfile);
 
+  // ---------------- /autocode (تنظیم ارسال خودکار کد تحویل ساعت ۱۱) ----------------
+  const renderAutoCodePanel = (enabled: boolean) => {
+    const statusText = enabled
+      ? "✅ <b>فعال</b>\nهر روز <b>شنبه تا چهارشنبه ساعت ۱۱:۰۰ صبح</b>، در صورت داشتن غذای رزرو شده برای همان روز، کد تحویل و بارکد (QR Code) به صورت خودکار برایتان ارسال می‌شود."
+      : "🔕 <b>غیرفعال</b>\nارسال خودکار روزانه برای شما متوقف شده است.";
+
+    const text = `⏰ <b>ارسال خودکار کد تحویل و بارکد</b>\n\nوضعیت فعلی: ${statusText}`;
+    const kb = new InlineKeyboard().text(
+      enabled ? "🔕 غیرفعال کردن" : "🔔 فعال کردن",
+      "toggle_autocode"
+    );
+    return { text, kb };
+  };
+
+  bot.command("autocode", async (ctx) => {
+    const client = await getClient(ctx);
+    if (!client) return;
+    const userDb = await db.getUser(env.DB, ctx.from!.id);
+    const enabled = userDb?.auto_send_code !== 0;
+    const { text, kb } = renderAutoCodePanel(enabled);
+    await ctx.reply(text, { parse_mode: "HTML", reply_markup: kb });
+  });
+
+  bot.callbackQuery("toggle_autocode", async (ctx) => {
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return;
+    const userDb = await db.getUser(env.DB, telegramId);
+    if (!userDb) {
+      await ctx.answerCallbackQuery("ابتدا وارد حساب کاربری شوید.");
+      return;
+    }
+    const newState = userDb.auto_send_code === 0;
+    await db.setAutoSendCode(env.DB, telegramId, newState);
+    await ctx.answerCallbackQuery(
+      newState ? "✅ ارسال خودکار ساعت ۱۱ فعال شد." : "🔕 ارسال خودکار ساعت ۱۱ غیرفعال شد."
+    );
+    const { text, kb } = renderAutoCodePanel(newState);
+    await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: kb }).catch(async () => {
+      await ctx.reply(text, { parse_mode: "HTML", reply_markup: kb });
+    });
+  });
+
   // ---------------- /today (غذای امروز) ----------------
   const handleToday = async (ctx: Context) => {
     const client = await getClient(ctx);
@@ -224,19 +277,15 @@ export function createBot(env: Env, customApiRoot?: string, webAppUrl?: string):
 
     const waitMsg = await ctx.reply("⏳ در حال دریافت اطلاعات غذای امروز...");
     try {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      const todayStr = `${y}-${m}-${d}`;
-      const todayJalali = toJalaliStr(now);
+      const today = getTehranTodayInfo();
+      const todayStr = today.isoDate;
+      const todayJalali = today.jalaliDate;
 
-      const curSat = getCurrentWeekSaturdayStr(now);
-      const data = await client.getReservationInfo(curSat);
+      const data = await client.getReservationInfo(today.weekSaturdayStr);
       const weekDays = data.weekDays || [];
 
       const todayMeals: { mealTitle: string; res: any }[] = [];
-      let todayDayName = "";
+      let todayDayName = today.persianDayName;
 
       for (const day of weekDays) {
         if (day.date === todayStr) {

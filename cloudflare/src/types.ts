@@ -20,6 +20,7 @@ export interface User {
   selected_self_id?: number;
   selected_self_name?: string;
   full_name?: string;
+  auto_send_code?: number;
   created_at?: number;
   updated_at?: number;
 }

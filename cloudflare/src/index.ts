@@ -8,10 +8,12 @@ import { TELEGRAM_WEB_APP_JS } from "./telegramSdk";
 import {
   getCurrentWeekSaturdayStr,
   getNextWeekSaturdayStr,
+  getTehranTodayInfo,
   toJalaliStr,
   normalizeWeeklyPrograms,
 } from "./date";
 import { generateQrPng } from "./qr";
+import { extractTodayMeals, sendDailyMealCodes } from "./scheduler";
 
 function jsonResponse(data: any, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -255,32 +257,20 @@ export default {
       if (!client) return jsonResponse({ error: "کاربر وارد نشده است" }, 401);
 
       try {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, "0");
-        const d = String(now.getDate()).padStart(2, "0");
-        const todayIso = `${y}-${m}-${d}`;
-
-        const satStr = getCurrentWeekSaturdayStr(now);
-        const resData = await client.getReservationInfo(satStr);
-
-        const items = Array.isArray(resData) ? resData : resData?.items || [];
-        const todayMeals = items.filter((item: any) => {
-          const itemDate = (item.programDate || item.date || "").split(" ")[0];
-          return itemDate === todayIso;
-        });
+        const today = getTehranTodayInfo();
+        const resData = await client.getReservationInfo(today.weekSaturdayStr);
+        const todayMeals = extractTodayMeals(resData, today.isoDate);
 
         return jsonResponse({
-          dateJalali: toJalaliStr(now),
-          meals: todayMeals.map((meal: any) => ({
-            reserveId: meal.reserveId || meal.id,
-            foodName: meal.foodName || meal.foodTitle || "غذا",
-            mealTypeName:
-              meal.mealTypeName || (meal.mealTypeId === 1 ? "صبحانه" : meal.mealTypeId === 2 ? "ناهار" : "شام"),
-            selfName: meal.selfName || "",
-            price: meal.price || 0,
-            state: meal.state,
-            delivered: meal.state === 3 || meal.delivered,
+          dateJalali: `${today.persianDayName} ${today.jalaliDate}`,
+          meals: todayMeals.map(({ mealTitle, res }) => ({
+            reserveId: res.id || res.reserveId,
+            foodName: (res.foodNames || res.foodName || res.foodTitle || "غذا").replace(/\|+$/, ""),
+            mealTypeName: mealTitle || res.mealTypeName || "وعده",
+            selfName: res.selfName || res.self || "",
+            price: res.price || 0,
+            state: res.state,
+            delivered: !!(res.consumed || res.state === 3 || res.delivered),
           })),
         });
       } catch (e: any) {
@@ -575,6 +565,21 @@ export default {
 </body>
 </html>`,
       { headers: { "Content-Type": "text/html;charset=UTF-8" } }
+    );
+  },
+
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      sendDailyMealCodes(env)
+        .then((summary) => {
+          console.log(
+            `[Cron ${controller.cron}] Daily meal code dispatch complete:`,
+            JSON.stringify(summary)
+          );
+        })
+        .catch((err) => {
+          console.error(`[Cron ${controller.cron}] Daily meal code dispatch failed:`, err);
+        })
     );
   },
 };

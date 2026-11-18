@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     selected_self_id INTEGER,
     selected_self_name TEXT,
     full_name TEXT,
+    auto_send_code INTEGER DEFAULT 1,
     created_at REAL,
     updated_at REAL
 );

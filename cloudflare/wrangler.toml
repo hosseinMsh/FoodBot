@@ -23,3 +23,7 @@ database_id = "e187567f-4211-486f-8877-d75c94b64dd4"
 [[kv_namespaces]]
 binding = "KV"
 id = "0b1aa93c21754d258913972d7176c86c"
+
+# Cron Triggers (UTC): 07:30 UTC = 11:00 AM Asia/Tehran (UTC+03:30), Saturday to Wednesday
+[triggers]
+crons = ["30 7 * * SAT,SUN,MON,TUE,WED"]

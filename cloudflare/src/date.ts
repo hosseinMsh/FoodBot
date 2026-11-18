@@ -93,6 +93,55 @@ export function getNextWeekSaturdayStr(refDate?: Date): string {
   return formatDateStr(sat);
 }
 
+/**
+ * Returns a Date shifted by +03:30 (Asia/Tehran, permanent UTC+3:30)
+ * so its UTC getters (.getUTCFullYear, .getUTCMonth, .getUTCDate, .getUTCDay)
+ * always represent Iran local calendar date regardless of host timezone.
+ */
+export function getTehranShiftedDate(refDate?: Date): Date {
+  const base = refDate ? new Date(refDate) : new Date();
+  return new Date(base.getTime() + 210 * 60 * 1000);
+}
+
+export function getTehranTodayInfo(refDate?: Date): {
+  isoDate: string;
+  jalaliDate: string;
+  dayOfWeek: number; // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  persianDayName: string;
+  weekSaturdayStr: string;
+} {
+  const shifted = getTehranShiftedDate(refDate);
+  const y = shifted.getUTCFullYear();
+  const m = shifted.getUTCMonth() + 1;
+  const d = shifted.getUTCDate();
+  const jsDay = shifted.getUTCDay();
+
+  const isoDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const [jy, jm, jd] = gregorianToJalali(y, m, d);
+  const jalaliDate = `${jy}/${String(jm).padStart(2, "0")}/${String(jd).padStart(2, "0")}`;
+
+  const jsDayToPersian: Record<number, string> = {
+    0: "یکشنبه",
+    1: "دوشنبه",
+    2: "سه‌شنبه",
+    3: "چهارشنبه",
+    4: "پنجشنبه",
+    5: "جمعه",
+    6: "شنبه",
+  };
+  const persianDayName = jsDayToPersian[jsDay] || "";
+
+  // Sat(6)->0, Sun(0)->1, Mon(1)->2, Tue(2)->3, Wed(3)->4, Thu(4)->5, Fri(5)->6
+  const daysSinceSat = (jsDay + 1) % 7;
+  const sat = new Date(Date.UTC(y, m - 1, d - daysSinceSat));
+  const sy = sat.getUTCFullYear();
+  const sm = String(sat.getUTCMonth() + 1).padStart(2, "0");
+  const sd = String(sat.getUTCDate()).padStart(2, "0");
+  const weekSaturdayStr = `${sy}-${sm}-${sd} 00:00:00`;
+
+  return { isoDate, jalaliDate, dayOfWeek: jsDay, persianDayName, weekSaturdayStr };
+}
+
 export function formatToman(rials: number | null | undefined): string {
   if (rials == null) return "۰ تومان";
   const isNegative = rials < 0;

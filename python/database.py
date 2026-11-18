@@ -1,5 +1,5 @@
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import aiosqlite
 from config import DATABASE_PATH
 
@@ -18,10 +18,16 @@ async def init_db():
                 selected_self_id INTEGER,
                 selected_self_name TEXT,
                 full_name TEXT,
+                auto_send_code INTEGER DEFAULT 1,
                 created_at REAL,
                 updated_at REAL
             )
         """)
+        # Safe migration for existing databases without auto_send_code column
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN auto_send_code INTEGER DEFAULT 1")
+        except Exception:
+            pass
         await db.commit()
 
 
@@ -109,6 +115,32 @@ async def update_user_profile(telegram_id: int, full_name: str):
             WHERE telegram_id = ?
             """,
             (full_name, now, telegram_id),
+        )
+        await db.commit()
+
+
+async def get_auto_send_users() -> List[Dict[str, Any]]:
+    """Returns all authenticated users with automatic daily delivery code enabled."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT * FROM users
+            WHERE access_token IS NOT NULL AND access_token != ''
+              AND (auto_send_code IS NULL OR auto_send_code != 0)
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def set_auto_send_code(telegram_id: int, enabled: bool):
+    """Enables or disables automatic 11:00 AM daily meal code sending for a user."""
+    now = time.time()
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute(
+            "UPDATE users SET auto_send_code = ?, updated_at = ? WHERE telegram_id = ?",
+            (1 if enabled else 0, now, telegram_id),
         )
         await db.commit()
 

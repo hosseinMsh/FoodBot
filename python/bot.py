@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from datetime import time as dt_time, timezone, timedelta
 import logging
 import sys
 from telegram import BotCommand, Update
@@ -44,6 +45,9 @@ from handlers.auth import (
 from handlers.today_food import (
     today_food_command,
     forget_code_callback,
+    autocode_command,
+    toggle_autocode_callback,
+    send_daily_meal_codes_job,
 )
 
 from handlers.next_week import (
@@ -96,6 +100,7 @@ async def post_init(application: Application):
         BotCommand("start", "شروع و منوی اصلی"),
         BotCommand("app", "📱 مینی‌اپ صمد"),
         BotCommand("today", "دریافت غذای امروز و بارکد"),
+        BotCommand("autocode", "ارسال خودکار کد تحویل ساعت ۱۱"),
         BotCommand("nextweek", "برنامه غذایی هفته آینده"),
         BotCommand("remaining", "غذاهای رزرو مانده هفته جاری"),
         BotCommand("credit", "مانده اعتبار کیف پول"),
@@ -202,9 +207,10 @@ def main():
     app.add_handler(CommandHandler("profile", profile_command))
     app.add_handler(CommandHandler("whoami", profile_command))
 
-    # Feature 1: دریافت غذای روز
+    # Feature 1: دریافت غذای روز و ارسال خودکار ساعت ۱۱
     app.add_handler(CommandHandler("today", today_food_command))
     app.add_handler(MessageHandler(filters.Regex(f"^{BTN_TODAY}$"), today_food_command))
+    app.add_handler(CommandHandler("autocode", autocode_command))
 
     # Feature 2: دریافت لیست غذاهای هفته بعدی
     app.add_handler(CommandHandler("nextweek", next_week_food_command))
@@ -294,6 +300,25 @@ def main():
         )
     )
     app.add_handler(CallbackQueryHandler(buy_daily_callback, pattern=r"^buy_daily_"))
+    app.add_handler(
+        CallbackQueryHandler(toggle_autocode_callback, pattern=r"^toggle_autocode$")
+    )
+
+    # Schedule automatic daily delivery code & QR dispatch:
+    # 11:00 AM Asia/Tehran (UTC+03:30), Saturday (6) through Wednesday (3)
+    if app.job_queue is not None:
+        tehran_tz = timezone(timedelta(hours=3, minutes=30))
+        app.job_queue.run_daily(
+            send_daily_meal_codes_job,
+            time=dt_time(hour=11, minute=0, tzinfo=tehran_tz),
+            days=(6, 0, 1, 2, 3),  # 6=Sat, 0=Sun, 1=Mon, 2=Tue, 3=Wed
+            name="daily_meal_codes",
+        )
+        logger.info("Scheduled daily auto-code job: 11:00 AM Asia/Tehran (Sat-Wed).")
+    else:
+        logger.warning(
+            "JobQueue is not available. Install 'python-telegram-bot[job-queue]' to enable 11:00 AM auto-code."
+        )
 
     allowed_updates = (
         ["message", "callback_query", "edited_message"]

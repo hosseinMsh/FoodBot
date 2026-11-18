@@ -292,6 +292,10 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         student_info = profile.get("student", {})
         major = student_info.get("studyMajor", {}).get("name", "نامشخص")
         level = student_info.get("studyLevel", {}).get("name", "نامشخص")
+        auto_send_enabled = user_db.get("auto_send_code", 1) != 0
+        auto_send_status = (
+            "✅ فعال (ساعت ۱۱ صبح، شنبه تا چهارشنبه)" if auto_send_enabled else "🔕 غیرفعال"
+        )
 
         msg = (
             "👤 <b>اطلاعات حساب کاربری</b>\n\n"
@@ -299,10 +303,23 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"▫️ <b>شماره دانشجویی:</b> <code>{student_id}</code>\n"
             f"▫️ <b>مقطع و رشته:</b> {level} - {major}\n"
             f"▫️ <b>سلف پیش‌فرض:</b> {self_name}\n"
-            f"▫️ <b>موجودی اعتبار:</b> {format_toman(credit)}\n\n"
+            f"▫️ <b>موجودی اعتبار:</b> {format_toman(credit)}\n"
+            f"▫️ <b>ارسال خودکار کد تحویل:</b> {auto_send_status}\n\n"
             "برای تغییر سلف پیش‌فرض از دکمه «⚙️ انتخاب سلف» استفاده کنید."
         )
-        await update.message.reply_html(msg)
+        kb = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🔕 غیرفعال کردن ارسال خودکار ساعت ۱۱"
+                        if auto_send_enabled
+                        else "🔔 فعال کردن ارسال خودکار ساعت ۱۱",
+                        callback_data="toggle_autocode",
+                    )
+                ]
+            ]
+        )
+        await update.message.reply_html(msg, reply_markup=kb)
     except SamadAPIError as e:
         await update.message.reply_html(f"❌ {e.message}")
     finally:

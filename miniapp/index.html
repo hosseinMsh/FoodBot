@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>سامانه تغذیه صمد - FoodBot Telegram Mini App</title>
+  <title>سامانه تغذیه صمد - FoodBot</title>
   <script src="/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
@@ -17,48 +17,75 @@
       --button-text: var(--tg-theme-button-text-color, #ffffff);
       --sec-bg: var(--tg-theme-secondary-bg-color, #1e293b);
       --card-bg: var(--tg-theme-secondary-bg-color, #1e293b);
-      --border: rgba(255, 255, 255, 0.08);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --input-bg: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 255, 255, 0.1);
       --success: #22c55e;
       --danger: #ef4444;
       --warning: #f59e0b;
       --accent: #0ea5e9;
       --radius: 14px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    /* Light Mode Automatic Contrast Adaptation */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --card-border: rgba(0, 0, 0, 0.08);
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --border: rgba(0, 0, 0, 0.1);
+      }
+    }
+    body.theme-light {
+      --card-border: rgba(0, 0, 0, 0.08);
+      --input-bg: rgba(0, 0, 0, 0.04);
+      --border: rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
-      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding-bottom: 80px;
+      padding-bottom: calc(76px + var(--safe-bottom));
       user-select: none;
       -webkit-user-select: none;
       overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh;
     }
 
+    /* Top App Bar */
     header {
       position: sticky;
       top: 0;
       z-index: 40;
       background: var(--bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
       padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
     }
 
-    .user-info { display: flex; flex-direction: column; }
-    .user-name { font-weight: 700; font-size: 15px; }
-    .user-sub { font-size: 12px; color: var(--hint); display: flex; align-items: center; gap: 4px; }
+    .user-info { display: flex; flex-direction: column; overflow: hidden; }
+    .user-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-sub { font-size: 12px; color: var(--hint); display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
     .balance-badge {
       background: rgba(14, 165, 233, 0.12);
       color: var(--link);
-      border: 1px solid rgba(14, 165, 233, 0.25);
+      border: 1px solid rgba(14, 165, 233, 0.28);
       border-radius: 20px;
       padding: 6px 12px;
       font-size: 13px;
@@ -67,25 +94,34 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
+      transition: transform 0.15s ease, background 0.15s ease;
+      flex-shrink: 0;
     }
+    .balance-badge:active { transform: scale(0.96); background: rgba(14, 165, 233, 0.2); }
 
-    .tab-content { display: none; padding: 16px; animation: fadeIn 0.2s ease-in-out; }
+    /* Tabs */
+    .tab-content { display: none; padding: 14px 16px; animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
     .tab-content.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* Bottom Navigation Bar */
     nav.bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 64px;
+      height: calc(64px + var(--safe-bottom));
       background: var(--sec-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-around;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 6px;
       z-index: 50;
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: var(--safe-bottom);
     }
 
     .nav-item {
@@ -96,22 +132,40 @@
       justify-content: center;
       color: var(--hint);
       font-size: 11px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      padding: 6px 0;
-      transition: color 0.15s;
+      padding: 4px 0;
+      transition: color 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .nav-item:active { transform: scale(0.92); }
+    .nav-item.active { color: var(--link); font-weight: 800; }
+    .nav-icon { font-size: 20px; line-height: 1.2; margin-bottom: 2px; }
+
+    .nav-badge {
+      position: absolute;
+      top: 2px;
+      right: 50%;
+      margin-right: -20px;
+      background: var(--button);
+      color: var(--button-text);
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 1px 5px;
+      min-width: 16px;
+      text-align: center;
+      line-height: 14px;
     }
 
-    .nav-item.active { color: var(--link); font-weight: 700; }
-    .nav-icon { font-size: 20px; margin-bottom: 2px; }
-
+    /* Cards & Containers */
     .card {
       background: var(--card-bg);
-      border: 1px solid var(--border);
+      border: 1px solid var(--card-border);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
     }
 
     .card-header {
@@ -123,8 +177,9 @@
       padding-bottom: 8px;
     }
 
-    .card-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
 
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -134,21 +189,41 @@
       background: var(--button);
       color: var(--button-text);
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 12px 16px;
+      font-family: inherit;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.15s ease;
       text-decoration: none;
     }
 
-    .btn:active { transform: scale(0.98); opacity: 0.9; }
-    .btn-pay { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3); }
-    .btn-secondary { background: rgba(255, 255, 255, 0.08); color: var(--text); }
-    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn:active { transform: scale(0.97); opacity: 0.9; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn-pay {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+    }
+    .btn-pay:hover { box-shadow: 0 6px 18px rgba(16, 185, 129, 0.38); }
+
+    .btn-secondary {
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.14);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.28);
+    }
+
     .btn-sm { width: auto; padding: 6px 14px; font-size: 12px; border-radius: 8px; }
 
+    /* Badges */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -156,61 +231,105 @@
       padding: 3px 8px;
       border-radius: 6px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
     }
     .badge-success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
     .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
     .badge-info { background: rgba(14, 165, 233, 0.15); color: var(--link); }
 
+    /* Favorite Food Chips */
+    .fav-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      color: var(--link);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .fav-chip-del {
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0.75;
+      transition: opacity 0.15s;
+    }
+    .fav-chip-del:hover { opacity: 1; color: var(--danger); }
+
+    /* Meal Item Box */
     .meal-box {
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 12px;
       margin-bottom: 10px;
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--input-bg);
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .meal-box.reserved {
+      border-color: rgba(34, 197, 94, 0.35);
+      background: rgba(34, 197, 94, 0.05);
     }
     .meal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .meal-type { font-size: 12px; font-weight: 700; color: var(--hint); }
-    .food-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-    .meal-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--hint); margin-top: 6px; }
+    .food-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .meal-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--hint); margin-top: 8px; }
 
+    /* Horizontal Pill Scroll */
     .pill-scroll {
       display: flex;
       gap: 8px;
       overflow-x: auto;
       padding-bottom: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
     }
     .pill-scroll::-webkit-scrollbar { display: none; }
+
     .day-pill {
       flex: 0 0 auto;
       background: var(--sec-bg);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 8px 14px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--hint);
       cursor: pointer;
       text-align: center;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
+      position: relative;
     }
+    .day-pill:active { transform: scale(0.96); }
     .day-pill.active {
       background: var(--button);
       color: var(--button-text);
       border-color: var(--button);
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
     }
-    .day-pill-sub { font-size: 10px; opacity: 0.8; display: block; margin-top: 2px; }
+    .day-pill-sub { font-size: 10px; opacity: 0.85; display: block; margin-top: 2px; }
+    .day-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+      margin-right: 3px;
+      vertical-align: middle;
+    }
 
+    /* Modals */
     .modal-backdrop {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -225,19 +344,48 @@
       max-width: 360px;
       padding: 24px 20px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
       animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
     }
-    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-    .qr-img { width: 190px; height: 190px; border-radius: 12px; margin: 16px auto; display: block; background: white; padding: 8px; }
-    .forget-code-text { font-size: 28px; font-weight: 900; letter-spacing: 4px; color: var(--link); margin: 8px 0; font-family: monospace; }
+    .qr-img {
+      width: 190px;
+      height: 190px;
+      border-radius: 12px;
+      margin: 14px auto;
+      display: block;
+      background: white;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .forget-code-box {
+      background: var(--input-bg);
+      border: 1px dashed var(--link);
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px 0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .forget-code-box:active { background: rgba(14, 165, 233, 0.15); }
+    .forget-code-text {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--link);
+      font-family: monospace;
+    }
 
+    /* Forms & Inputs */
     .form-group { margin-bottom: 14px; text-align: right; }
-    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--hint); margin-bottom: 6px; }
+    .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--hint); margin-bottom: 6px; }
     .form-control {
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--input-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--text);
@@ -245,21 +393,26 @@
       padding: 12px 14px;
       font-size: 14px;
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .form-control:focus { border-color: var(--link); }
+    .form-control:focus {
+      border-color: var(--link);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+    }
 
+    /* Skeleton Loading */
     .skeleton {
       background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
-      border-radius: 8px;
+      border-radius: 10px;
     }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+    /* Toast Notification */
     #toast {
       position: fixed;
-      bottom: 74px;
+      bottom: calc(76px + var(--safe-bottom));
       left: 50%;
       transform: translateX(-50%) translateY(20px);
       background: #1e293b;
@@ -268,27 +421,34 @@
       border-radius: 24px;
       padding: 10px 20px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       opacity: 0;
       pointer-events: none;
-      transition: all 0.25s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 120;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
       white-space: nowrap;
+      max-width: 90vw;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Spin Animation */
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- Top App Header -->
   <header>
     <div class="user-info">
       <span class="user-name" id="head-user-name">در حال اتصال...</span>
       <span class="user-sub" id="head-self-name">🏛 سلف: در حال بارگذاری</span>
     </div>
     <div class="balance-badge" id="head-balance" onclick="switchTab('wallet')">
-      💰 <span id="head-balance-toman">--</span>
+      💰 <span id="head-balance-toman">-- ت</span>
     </div>
   </header>
 
@@ -297,7 +457,10 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">🍽 وعده‌های امروز</span>
-        <span class="badge badge-info" id="today-date-str">...</span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <span class="badge badge-info" id="today-date-str">...</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadTodayMeals(true)" title="بروزرسانی" style="padding: 4px 8px;">🔄</button>
+        </div>
       </div>
       <div id="today-meals-container">
         <div class="skeleton" style="height: 90px; margin-bottom: 10px;"></div>
@@ -305,10 +468,10 @@
       </div>
     </div>
 
-    <!-- Quick Recharge Card -->
-    <div class="card" style="background: linear-gradient(135deg, rgba(5,150,105,0.15) 0%, rgba(2,132,199,0.15) 100%); border-color: rgba(16,185,129,0.25);">
-      <div class="card-title" style="margin-bottom: 8px;">💳 شارژ سریع حساب تغذیه</div>
-      <p style="font-size: 12px; color: var(--hint); margin-bottom: 12px;">اتصال مستقیم به صفحه افزایش اعتبار سامانه صمد (view.rose) همراه با توکن ورود اختصاصی</p>
+    <!-- Quick Recharge Banner -->
+    <div class="card" style="background: linear-gradient(135deg, rgba(5,150,105,0.12) 0%, rgba(2,132,199,0.12) 100%); border-color: rgba(16,185,129,0.25);">
+      <div class="card-title" style="margin-bottom: 6px;">💳 شارژ سریع حساب تغذیه</div>
+      <p style="font-size: 12px; color: var(--hint); margin-bottom: 12px;">اتصال مستقیم به صفحه افزایش اعتبار سامانه صمد (view.rose) با ورود خودکار</p>
       <button class="btn btn-pay" onclick="openDirectPayment()">
         💳 ورود به صفحه افزایش اعتبار (view.rose)
       </button>
@@ -322,13 +485,15 @@
       <button class="btn btn-secondary btn-sm" id="week-btn-next" onclick="switchWeek(1)" style="flex:1;">هفته آینده</button>
     </div>
 
-    <div class="pill-scroll" id="reserve-day-pills"></div>
+    <div class="pill-scroll" id="reserve-day-pills">
+      <!-- Generated via JS -->
+    </div>
 
-    <div class="card" style="margin-bottom: 12px;">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 13px; font-weight: 700;">انتخاب سلف:</span>
+    <div class="card" style="margin-bottom: 12px; padding: 12px 16px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; white-space: nowrap;">انتخاب سلف:</span>
         <select id="reserve-self-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 12px;" onchange="changeReserveSelf()">
-          <option value="">در حال بارگذاری...</option>
+          <option value="">در حال بارگذاری سلف‌ها...</option>
         </select>
       </div>
     </div>
@@ -337,13 +502,46 @@
       <div class="skeleton" style="height: 110px; margin-bottom: 10px;"></div>
       <div class="skeleton" style="height: 110px;"></div>
     </div>
+
+    <!-- Smart Auto-Reserve & Favorites Card -->
+    <div class="card" style="margin-top: 14px; background: linear-gradient(135deg, rgba(14,165,233,0.08) 0%, rgba(99,102,241,0.08) 100%); border-color: rgba(14,165,233,0.25);">
+      <div class="card-header">
+        <span class="card-title">🤖 رزرو خودکار هوشمند</span>
+        <button class="btn btn-secondary btn-sm" id="btn-autoreserve-toggle" onclick="toggleAutoReserveInApp()" style="padding: 4px 10px;">
+          🔕 غیرفعال
+        </button>
+      </div>
+      <p style="font-size: 12px; color: var(--hint); margin-bottom: 12px;">
+        ربات به صورت شبانه منوی روزهای پیش‌رو را بررسی کرده و غذاهای محبوب زیر را به صورت خودکار برای شما رزرو می‌کند:
+      </p>
+
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span>⭐️ غذاهای موردعلاقه من:</span>
+          <span style="font-size: 11px; color: var(--hint);" id="fav-count-badge">۰ مورد</span>
+        </div>
+        <div id="favorites-chip-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+          <span style="font-size: 11px; color: var(--hint);">در حال بارگذاری علاقه‌مندی‌ها...</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="input-new-favorite" class="form-control" placeholder="نام غذای محبوب (مثلاً کباب، جوجه)" style="padding: 8px 12px; font-size: 12px; flex: 1;">
+          <button class="btn btn-pay btn-sm" onclick="addFavoriteFromApp()" style="width: auto; padding: 8px 14px; white-space: nowrap;">
+            ➕ افزودن
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" id="btn-run-autoreserve-app" onclick="triggerAutoReserveFromApp()" style="width: 100%;">
+        ⚡️ بررسی و رزرو خودکار همین حالا
+      </button>
+    </div>
   </div>
 
-  <!-- TAB 3: WALLET (کیف پول و شارژ) -->
+  <!-- TAB 3: WALLET (کیف پول و تراکنش‌ها) -->
   <div id="tab-wallet" class="tab-content">
     <div class="card" style="text-align: center; padding: 24px 16px;">
       <span style="font-size: 13px; color: var(--hint);">موجودی کیف پول تغذیه</span>
-      <div style="font-size: 30px; font-weight: 900; color: var(--link); margin: 8px 0;" id="wallet-balance-toman">
+      <div style="font-size: 32px; font-weight: 900; color: var(--link); margin: 8px 0;" id="wallet-balance-toman">
         ۰ تومان
       </div>
       <span style="font-size: 12px; color: var(--hint);" id="wallet-balance-rials">۰ ریال</span>
@@ -353,9 +551,9 @@
           💳 ورود به درگاه افزایش اعتبار (view.rose)
         </button>
         <button class="btn btn-secondary" onclick="openSamadTokenLogin()">
-          🔗 ورود سریع به وب سامانه صمد
+          🔗 ورود سریع با توکن به وب صمد
         </button>
-        <button class="btn btn-secondary btn-sm" onclick="loadCreditInfo(true)">
+        <button class="btn btn-secondary btn-sm" id="wallet-refresh-btn" onclick="loadCreditInfo(true)">
           🔄 بروزرسانی آنی موجودی
         </button>
       </div>
@@ -377,7 +575,7 @@
       <div class="card-header">
         <span class="card-title">👤 مشخصات کاربر</span>
       </div>
-      <div style="font-size: 13px; line-height: 2;">
+      <div style="font-size: 13px; line-height: 2.2;">
         <div><b>نام و نام خانوادگی:</b> <span id="prof-name">--</span></div>
         <div><b>شماره دانشجویی:</b> <span id="prof-student-id">--</span></div>
         <div><b>شناسه تلگرام:</b> <span id="prof-tg-id">--</span></div>
@@ -388,7 +586,7 @@
       <div class="card-header">
         <span class="card-title">🏛 سلف پیش‌فرض</span>
       </div>
-      <p style="font-size: 12px; color: var(--hint); margin-bottom: 10px;">سلف پیش‌فرضی که غذاهای روز و رزروها برای آن ثبت می‌شوند:</p>
+      <p style="font-size: 12px; color: var(--hint); margin-bottom: 10px;">سلف پیش‌فرضی که وعده‌ها و رزروها برای آن ثبت می‌شوند:</p>
       <select id="profile-self-select" class="form-control" style="margin-bottom: 12px;">
         <option value="">در حال بارگذاری سلف‌ها...</option>
       </select>
@@ -397,7 +595,7 @@
       </button>
     </div>
 
-    <div class="card" style="border-color: rgba(239, 68, 68, 0.2);">
+    <div class="card" style="border-color: rgba(239, 68, 68, 0.25);">
       <button class="btn btn-danger" onclick="logout()">
         🚪 خروج از حساب کاربری
       </button>
@@ -409,6 +607,7 @@
     <div class="nav-item active" onclick="switchTab('today')" id="nav-today">
       <span class="nav-icon">🍽</span>
       <span>امروز</span>
+      <span class="nav-badge" id="nav-badge-today" style="display:none;">۰</span>
     </div>
     <div class="nav-item" onclick="switchTab('reserve')" id="nav-reserve">
       <span class="nav-icon">📅</span>
@@ -425,13 +624,25 @@
   </nav>
 
   <!-- QR Code & Delivery Code Modal -->
-  <div class="modal-backdrop" id="qr-modal" onclick="closeModal(event)">
+  <div class="modal-backdrop" id="qr-modal" onclick="closeActiveModal(event)">
     <div class="modal-box" onclick="event.stopPropagation()">
-      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;" id="qr-food-title">غذای روز</h3>
-      <p style="font-size: 12px; color: var(--hint);">کد تحویل را مقابل اسکنر گیت سلف بگیرید</p>
+      <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 4px;" id="qr-food-title">غذای روز</h3>
+      <p style="font-size: 12px; color: var(--hint);">کد تحویل یا بارکد را مقابل اسکنر گیت سلف بگیرید</p>
       <img id="qr-modal-img" class="qr-img" src="" alt="QR Code">
-      <div class="forget-code-text" id="qr-code-number">------</div>
-      <button class="btn btn-secondary" onclick="closeModal()">بستن</button>
+      
+      <div class="forget-code-box" onclick="copyDeliveryCode()" title="برای کپی کلیک کنید">
+        <span style="font-size: 11px; color: var(--hint); display: block; margin-bottom: 2px;">کد عددی فراموشی کارت (برای کپی لمس کنید)</span>
+        <div class="forget-code-text" id="qr-code-number">------</div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-secondary btn-sm" onclick="copyDeliveryCode()" style="flex:1;">
+          📋 کپی کد
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="closeActiveModal()" style="flex:1;">
+          بستن
+        </button>
+      </div>
     </div>
   </div>
 
@@ -442,22 +653,25 @@
       <p style="font-size: 12px; color: var(--hint); margin-bottom: 16px;">جهت مشاهده برنامه غذایی و رزرو، با حساب صمد خود وارد شوید:</p>
       
       <div class="form-group">
-        <label class="form-label">شماره دانشجویی / نام کاربری</label>
-        <input type="text" id="login-username" class="form-control" placeholder="مثال: 401100000" inputmode="numeric">
+        <label class="form-label" for="login-username">شماره دانشجویی / نام کاربری</label>
+        <input type="text" id="login-username" class="form-control" placeholder="مثال: 401100000" inputmode="numeric" autocomplete="username">
       </div>
 
       <div class="form-group">
-        <label class="form-label">کلمه عبور</label>
-        <input type="password" id="login-password" class="form-control" placeholder="رمز عبور سامانه صمد">
+        <label class="form-label" for="login-password">کلمه عبور</label>
+        <div style="position: relative;">
+          <input type="password" id="login-password" class="form-control" placeholder="رمز عبور سامانه صمد" autocomplete="current-password" style="padding-left: 40px;">
+          <span onclick="togglePasswordVisibility()" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 16px; user-select: none;">👁</span>
+        </div>
       </div>
 
       <div class="form-group" id="captcha-group" style="display:none;">
-        <label class="form-label">کد امنیتی</label>
+        <label class="form-label" for="login-captcha">کد امنیتی</label>
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-          <img id="captcha-img" src="" style="height: 38px; border-radius: 8px; background: white; flex:1;" alt="کپچا">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="loadCaptcha()" style="height: 38px;">🔄</button>
+          <img id="captcha-img" src="" style="height: 40px; border-radius: 8px; background: white; flex:1; object-fit: contain;" alt="کپچا">
+          <button type="button" class="btn btn-secondary btn-sm" id="captcha-reload-btn" onclick="loadCaptcha()" style="height: 40px; width: 44px; padding: 0;">🔄</button>
         </div>
-        <input type="text" id="login-captcha" class="form-control" placeholder="حروف تصویر بالا" inputmode="numeric">
+        <input type="text" id="login-captcha" class="form-control" placeholder="حروف یا اعداد تصویر بالا" inputmode="text" autocomplete="off">
       </div>
 
       <button class="btn btn-pay" id="login-submit-btn" onclick="submitLogin()" style="margin-top: 10px;">
@@ -466,20 +680,62 @@
     </div>
   </div>
 
-  <!-- Toast -->
+  <!-- Toast Notification -->
   <div id="toast">پیام سیستم</div>
 
   <script>
+    // -------------------------------------------------------------
+    // Telegram WebApp Initialization & Native Controls
+    // -------------------------------------------------------------
     const tg = window.Telegram?.WebApp;
     if (tg) {
       try {
         tg.ready();
         tg.expand();
-        tg.enableClosingConfirmation();
-      } catch(e){}
+        tg.enableClosingConfirmation?.();
+        tg.requestFullscreen?.();
+        if (tg.colorScheme === "light") {
+          document.body.classList.add("theme-light");
+        }
+      } catch (e) {}
     }
 
+    // Modal navigation stack for Telegram BackButton
+    const modalStack = [];
+
+    function openModal(modalId) {
+      const el = document.getElementById(modalId);
+      if (el) {
+        el.classList.add("show");
+        modalStack.push(modalId);
+        if (tg?.BackButton) {
+          tg.BackButton.show();
+        }
+      }
+    }
+
+    function closeActiveModal() {
+      if (modalStack.length > 0) {
+        const modalId = modalStack.pop();
+        const el = document.getElementById(modalId);
+        if (el) el.classList.remove("show");
+      }
+      if (modalStack.length === 0 && tg?.BackButton) {
+        tg.BackButton.hide();
+      }
+    }
+
+    if (tg?.BackButton) {
+      tg.BackButton.onClick(() => closeActiveModal());
+    }
+
+    // -------------------------------------------------------------
+    // Global Config & State
+    // -------------------------------------------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_BASE = window.FOODBOT_API_URL || urlParams.get("api") || "";
     let PAY_SHARIF_URL = "https://setad.dining.sharif.edu/nurture/user/credit/charge/view.rose";
+
     let currentTelegramId = null;
     let currentUser = null;
     let currentSelfs = [];
@@ -487,15 +743,38 @@
     let selectedDayIndex = 0;
     let weeklyProgramsData = [];
     let captchaData = null;
+    const forgetCodeCache = new Map();
+    let userFavorites = [];
+    let autoReserveEnabled = false;
 
-    // Detect Telegram User (Multi-stage fallback strategy)
-    function getTelegramId() {
-      // 1. Check tg.initDataUnsafe
-      if (tg?.initDataUnsafe?.user?.id) {
-        return tg.initDataUnsafe.user.id;
+    // -------------------------------------------------------------
+    // Centralized API Client with Header Authentication
+    // -------------------------------------------------------------
+    async function apiFetch(endpoint, options = {}) {
+      const url = `${API_BASE}${endpoint}`;
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": tg?.initData || "",
+        ...(options.headers || {})
+      };
+
+      try {
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) {
+          // Session expired or unauthenticated
+          openModal("login-modal");
+          loadCaptcha();
+        }
+        return res;
+      } catch (err) {
+        console.error(`API Fetch Error [${endpoint}]:`, err);
+        throw err;
       }
+    }
 
-      // 2. Check tg.initData parsed
+    // Multi-stage Telegram User Identification
+    function getTelegramId() {
+      if (tg?.initDataUnsafe?.user?.id) return tg.initDataUnsafe.user.id;
       if (tg?.initData) {
         try {
           const params = new URLSearchParams(tg.initData);
@@ -506,8 +785,6 @@
           }
         } catch (e) {}
       }
-
-      // 3. Check window.location.hash (#tgWebAppData=...)
       try {
         const hash = window.location.hash.substring(1);
         if (hash) {
@@ -523,15 +800,9 @@
           }
         }
       } catch (e) {}
+      const queryId = urlParams.get("user_id") || urlParams.get("id");
+      if (queryId) return parseInt(queryId, 10);
 
-      // 4. Check query params (?user_id=... or ?id=...)
-      try {
-        const p = new URLSearchParams(window.location.search);
-        const queryId = p.get("user_id") || p.get("id");
-        if (queryId) return parseInt(queryId, 10);
-      } catch (e) {}
-
-      // 5. Check localStorage
       try {
         const savedId = localStorage.getItem("foodbot_telegram_id");
         if (savedId) {
@@ -539,7 +810,6 @@
           if (parsed && parsed > 0) return parsed;
         }
       } catch (e) {}
-
       return 0;
     }
 
@@ -548,23 +818,35 @@
       try { localStorage.setItem("foodbot_telegram_id", String(currentTelegramId)); } catch(e){}
     }
 
+    // -------------------------------------------------------------
+    // Haptics & Feedback Helpers
+    // -------------------------------------------------------------
     function haptic(type = "light") {
-      if (tg?.HapticFeedback) {
+      if (!tg?.HapticFeedback) return;
+      try {
         if (type === "success" || type === "error" || type === "warning") {
           tg.HapticFeedback.notificationOccurred(type);
+        } else if (type === "selectionChanged") {
+          tg.HapticFeedback.selectionChanged();
         } else {
           tg.HapticFeedback.impactOccurred(type);
         }
-      }
+      } catch (e) {}
     }
 
+    let toastTimer = null;
     function showToast(msg) {
       const t = document.getElementById("toast");
+      if (!t) return;
       t.innerText = msg;
       t.classList.add("show");
-      setTimeout(() => t.classList.remove("show"), 2500);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
     }
 
+    // -------------------------------------------------------------
+    // Navigation & Tabs
+    // -------------------------------------------------------------
     function switchTab(tabId) {
       haptic("selectionChanged");
       document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
@@ -582,10 +864,13 @@
       }
     }
 
+    // -------------------------------------------------------------
+    // External Direct Payment & Token Login
+    // -------------------------------------------------------------
     function openDirectPayment() {
-      haptic("impact");
-      const targetUrl = PAY_SHARIF_URL || `/charge?user_id=${currentTelegramId}`;
-      if (tg && tg.openLink) {
+      haptic("medium");
+      const targetUrl = PAY_SHARIF_URL || `${API_BASE}/charge?user_id=${currentTelegramId}`;
+      if (tg?.openLink) {
         tg.openLink(targetUrl);
       } else {
         window.open(targetUrl, "_blank");
@@ -593,12 +878,12 @@
     }
 
     async function openSamadTokenLogin() {
-      haptic("impact");
+      haptic("medium");
       try {
-        const res = await fetch(`/api/credit?user_id=${currentTelegramId}`);
+        const res = await apiFetch(`/api/credit?user_id=${currentTelegramId}`);
         const data = await res.json();
         if (data.loginTokenUrl) {
-          if (tg && tg.openLink) tg.openLink(data.loginTokenUrl);
+          if (tg?.openLink) tg.openLink(data.loginTokenUrl);
           else window.open(data.loginTokenUrl, "_blank");
         } else {
           openDirectPayment();
@@ -608,19 +893,45 @@
       }
     }
 
+    // -------------------------------------------------------------
+    // Application Lifecycle & Boot
+    // -------------------------------------------------------------
     async function initApp() {
       try {
-        const res = await fetch(`/api/me?user_id=${currentTelegramId}`);
+        const res = await apiFetch(`/api/me?user_id=${currentTelegramId}`);
         const data = await res.json();
 
         if (data.logged_in && data.user) {
           currentUser = data.user;
+          currentTelegramId = data.user.telegram_id;
+          try { localStorage.setItem("foodbot_telegram_id", String(currentTelegramId)); } catch(e){}
+
           renderUserInfo(currentUser);
+          if (Array.isArray(data.selfs) && data.selfs.length > 0) {
+            currentSelfs = data.selfs;
+            renderSelfsOptions(currentSelfs);
+          } else {
+            loadSelfs();
+          }
+
+          if (Array.isArray(data.favorites)) {
+            userFavorites = data.favorites;
+            renderFavoritesChips();
+          }
+          if (data.user && data.user.auto_reserve_enabled !== undefined) {
+            autoReserveEnabled = !!data.user.auto_reserve_enabled;
+            renderAutoReserveStatus();
+          }
+
           loadTodayMeals();
-          loadSelfs();
         } else {
-          document.getElementById("login-modal").classList.add("show");
+          // Open Login Modal
+          openModal("login-modal");
           loadCaptcha();
+          try {
+            const savedUser = localStorage.getItem("foodbot_saved_username");
+            if (savedUser) document.getElementById("login-username").value = savedUser;
+          } catch(e){}
         }
       } catch (err) {
         console.error("Init error:", err);
@@ -633,47 +944,68 @@
       document.getElementById("head-user-name").innerText = name;
       document.getElementById("prof-name").innerText = name;
       document.getElementById("prof-student-id").innerText = user.username || "--";
-      document.getElementById("prof-tg-id").innerText = currentTelegramId || "--";
+      document.getElementById("prof-tg-id").innerText = String(currentTelegramId || "--");
 
       const selfName = user.selected_self_name || "انتخاب نشده";
       document.getElementById("head-self-name").innerText = "🏛 سلف: " + selfName;
 
-      const tomanStr = (user.credit_toman || 0).toLocaleString("fa-IR") + " ت";
+      const tomanVal = user.credit_toman || 0;
+      const tomanStr = tomanVal.toLocaleString("fa-IR") + " ت";
       document.getElementById("head-balance-toman").innerText = tomanStr;
-      document.getElementById("wallet-balance-toman").innerText = (user.credit_toman || 0).toLocaleString("fa-IR") + " تومان";
+      document.getElementById("wallet-balance-toman").innerText = tomanVal.toLocaleString("fa-IR") + " تومان";
       document.getElementById("wallet-balance-rials").innerText = (user.credit_rials || 0).toLocaleString("fa-IR") + " ریال";
     }
 
-    async function loadTodayMeals() {
+    // -------------------------------------------------------------
+    // TAB 1: Today Meals
+    // -------------------------------------------------------------
+    async function loadTodayMeals(showNotification = false) {
       const container = document.getElementById("today-meals-container");
+      if (showNotification) showToast("در حال بروزرسانی وعده‌های امروز...");
+
       try {
-        const res = await fetch(`/api/today?user_id=${currentTelegramId}`);
+        const res = await apiFetch(`/api/today?user_id=${currentTelegramId}`);
         const data = await res.json();
-        
+
         document.getElementById("today-date-str").innerText = data.dateJalali || "امروز";
-        
+
+        const badge = document.getElementById("nav-badge-today");
+        if (Array.isArray(data.meals) && data.meals.length > 0) {
+          badge.innerText = String(data.meals.length);
+          badge.style.display = "inline-block";
+        } else {
+          badge.style.display = "none";
+        }
+
         if (!data.meals || data.meals.length === 0) {
-          container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--hint); font-size:13px;">برای امروز وعده‌ای رزرو نشده است 🍽</div>`;
+          container.innerHTML = `
+            <div style="text-align:center; padding:28px 16px; color:var(--hint); font-size:13px;">
+              <span style="font-size:32px; display:block; margin-bottom:8px;">🍽</span>
+              برای امروز هیچ غذایی رزرو نشده است.
+            </div>`;
           return;
         }
 
         let html = "";
         for (const meal of data.meals) {
           const isDelivered = meal.state === 3 || meal.delivered;
-          const statusBadge = isDelivered 
+          const statusBadge = isDelivered
             ? '<span class="badge badge-success">تحویل شده ✅</span>'
             : '<span class="badge badge-info">رزرو شده ⏳</span>';
 
+          const priceToman = meal.priceToman || Math.floor((meal.price || 0) / 10);
+          const safeFoodName = (meal.foodName || "غذا").replace(/'/g, "\\'");
+
           html += `
-            <div class="meal-box">
+            <div class="meal-box ${isDelivered ? '' : 'reserved'}">
               <div class="meal-header">
                 <span class="meal-type">${meal.mealTypeName || "وعده"} | ${meal.selfName || ""}</span>
                 ${statusBadge}
               </div>
               <div class="food-title">${meal.foodName || "غذا"}</div>
               <div class="meal-meta">
-                <span>قیمت: ${(meal.price / 10).toLocaleString("fa-IR")} تومان</span>
-                <button class="btn btn-secondary btn-sm" onclick="showQrModal('${meal.foodName}', '${meal.reserveId}')">
+                <span>هزینه: <b>${priceToman.toLocaleString("fa-IR")} تومان</b></span>
+                <button class="btn btn-secondary btn-sm" onclick="showQrModal('${safeFoodName}', ${meal.reserveId})">
                   📱 بارکد تحویل
                 </button>
               </div>
@@ -681,28 +1013,34 @@
           `;
         }
         container.innerHTML = html;
+        if (showNotification) showToast("وعده‌های امروز بروزرسانی شد.");
       } catch (e) {
-        container.innerHTML = '<div style="color:var(--danger); font-size:12px; padding:10px;">خطا در دریافت وعده‌های امروز</div>';
+        container.innerHTML = '<div style="color:var(--danger); font-size:12px; padding:12px; text-align:center;">خطا در دریافت وعده‌های امروز</div>';
       }
     }
 
+    // -------------------------------------------------------------
+    // TAB 2: Weekly Menu & Optimistic Reservation
+    // -------------------------------------------------------------
     async function loadReservablePrograms() {
       const container = document.getElementById("reserve-meals-container");
       container.innerHTML = `<div class="skeleton" style="height: 110px; margin-bottom: 10px;"></div><div class="skeleton" style="height: 110px;"></div>`;
 
       const selfId = document.getElementById("reserve-self-select").value || currentUser?.selected_self_id || "";
       try {
-        const res = await fetch(`/api/programs?user_id=${currentTelegramId}&self_id=${selfId}&week_offset=${currentWeekOffset}`);
+        const res = await apiFetch(`/api/programs?user_id=${currentTelegramId}&self_id=${selfId}&week_offset=${currentWeekOffset}`);
         const data = await res.json();
         weeklyProgramsData = data.days || [];
         renderDayPills();
         renderSelectedDayMeals();
       } catch {
-        container.innerHTML = '<div style="color:var(--danger); font-size:12px; padding:10px;">خطا در دریافت منوی هفتگی</div>';
+        container.innerHTML = '<div style="color:var(--danger); font-size:12px; padding:14px; text-align:center;">خطا در دریافت منوی هفتگی</div>';
       }
     }
 
     function switchWeek(offset) {
+      if (currentWeekOffset === offset) return;
+      haptic("selectionChanged");
       currentWeekOffset = offset;
       document.getElementById("week-btn-current").classList.toggle("active", offset === 0);
       document.getElementById("week-btn-next").classList.toggle("active", offset === 1);
@@ -720,10 +1058,21 @@
       let html = "";
       weeklyProgramsData.forEach((day, idx) => {
         const active = idx === selectedDayIndex ? "active" : "";
+        let hasReserved = false;
+        if (Array.isArray(day.meals)) {
+          for (const m of day.meals) {
+            if (m.foods && m.foods.some(f => f.isReserved)) {
+              hasReserved = true;
+              break;
+            }
+          }
+        }
+
+        const dateSub = day.dateJStr ? day.dateJStr.split('/').slice(1).join('/') : "";
         html += `
           <div class="day-pill ${active}" onclick="selectDay(${idx})">
-            <div>${day.dayTranslated || "روز"}</div>
-            <span class="day-pill-sub">${day.dateJStr ? day.dateJStr.split('/').slice(1).join('/') : ""}</span>
+            <div>${hasReserved ? '<span class="day-dot"></span>' : ''}${day.dayTranslated || "روز"}</div>
+            <span class="day-pill-sub">${dateSub}</span>
           </div>
         `;
       });
@@ -741,27 +1090,39 @@
       const container = document.getElementById("reserve-meals-container");
       const currentDay = weeklyProgramsData[selectedDayIndex];
       if (!currentDay || !currentDay.meals || currentDay.meals.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--hint); font-size:13px;">منویی برای این روز یافت نشد.</div>';
+        container.innerHTML = `
+          <div style="text-align:center; padding:28px 16px; color:var(--hint); font-size:13px;">
+            <span style="font-size:32px; display:block; margin-bottom:8px;">📅</span>
+            برنامه غذایی‌ای برای این روز در این سلف تعریف نشده است.
+          </div>`;
         return;
       }
 
       let html = "";
       currentDay.meals.forEach(m => {
-        html += `<div style="font-size:13px; font-weight:800; color:var(--link); margin: 12px 0 6px;">🔹 ${m.mealTypeTitle}</div>`;
+        html += `<div style="font-size:13px; font-weight:800; color:var(--link); margin: 12px 0 6px;">🔹 ${m.mealTypeTitle || "وعده"}</div>`;
         m.foods.forEach(f => {
           const isReserved = f.isReserved;
-          const actionBtn = isReserved
-            ? `<button class="btn btn-danger btn-sm" onclick="toggleReserve(${f.programId}, ${f.foodTypeId}, ${f.mealTypeId}, false)">لغو رزرو ✕</button>`
-            : `<button class="btn btn-pay btn-sm" onclick="toggleReserve(${f.programId}, ${f.foodTypeId}, ${f.mealTypeId}, true)">رزرو غذا ✓</button>`;
+          const priceToman = Math.floor(f.price / 10);
+          const isViolated = !!f.reserveRuleViolated;
+
+          let actionBtn = "";
+          if (isReserved) {
+            actionBtn = `<button class="btn btn-danger btn-sm" id="btn-food-${f.programId}-${f.foodTypeId}" onclick="optimisticToggleReserve(${f.programId}, ${f.foodTypeId}, ${f.mealTypeId}, ${f.price}, false)">لغو رزرو ✕</button>`;
+          } else if (isViolated) {
+            actionBtn = `<span class="badge badge-warning">مهلت تمام شده</span>`;
+          } else {
+            actionBtn = `<button class="btn btn-pay btn-sm" id="btn-food-${f.programId}-${f.foodTypeId}" onclick="optimisticToggleReserve(${f.programId}, ${f.foodTypeId}, ${f.mealTypeId}, ${f.price}, true)">رزرو غذا ✓</button>`;
+          }
 
           html += `
-            <div class="meal-box">
+            <div class="meal-box ${isReserved ? 'reserved' : ''}" id="card-food-${f.programId}-${f.foodTypeId}">
               <div class="meal-header">
                 <span class="food-title">${f.foodName}</span>
-                ${isReserved ? '<span class="badge badge-success">رزرو شده</span>' : ''}
+                ${isReserved ? '<span class="badge badge-success" id="badge-food-' + f.programId + '-' + f.foodTypeId + '">رزرو شده ✅</span>' : ''}
               </div>
-              <div class="meal-meta" style="align-items:center;">
-                <span>قیمت: ${Math.floor(f.price / 10).toLocaleString("fa-IR")} تومان</span>
+              <div class="meal-meta">
+                <span>هزینه: <b>${priceToman.toLocaleString("fa-IR")} تومان</b></span>
                 ${actionBtn}
               </div>
             </div>
@@ -771,13 +1132,52 @@
       container.innerHTML = html;
     }
 
-    async function toggleReserve(programId, foodTypeId, mealTypeId, select) {
-      haptic(select ? "success" : "warning");
-      showToast(select ? "در حال ثبت رزرو..." : "در حال لغو رزرو...");
+    // High Performance Optimistic Reservation Function
+    async function optimisticToggleReserve(programId, foodTypeId, mealTypeId, priceRials, select) {
+      haptic(select ? "medium" : "warning");
+
+      // 1. Find food in memory model
+      let targetFood = null;
+      for (const day of weeklyProgramsData) {
+        if (!day.meals) continue;
+        for (const m of day.meals) {
+          if (!m.foods) continue;
+          const found = m.foods.find(f => f.programId === programId && f.foodTypeId === foodTypeId);
+          if (found) {
+            targetFood = found;
+            break;
+          }
+        }
+        if (targetFood) break;
+      }
+
+      if (!targetFood) return;
+
+      // 2. Apply optimistic state update immediately
+      const prevReserved = targetFood.isReserved;
+      targetFood.isReserved = select;
+
+      const btn = document.getElementById(`btn-food-${programId}-${foodTypeId}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spin">⏳</span>`;
+      }
+
+      // Optimistic balance adjustment
+      const priceToman = Math.floor(priceRials / 10);
+      if (currentUser && currentUser.credit_toman !== undefined) {
+        currentUser.credit_toman += (select ? -priceToman : priceToman);
+        renderUserInfo(currentUser);
+      }
+
+      // Render updated day and pills instantly
+      renderDayPills();
+      renderSelectedDayMeals();
+
+      // 3. Fire background network API request
       try {
-        const res = await fetch("/api/reserve", {
+        const res = await apiFetch("/api/reserve", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             telegram_id: currentTelegramId,
             program_id: programId,
@@ -788,30 +1188,202 @@
         });
         const json = await res.json();
         if (json.success) {
-          showToast(json.message || "عملیات با موفقیت انجام شد.");
-          loadReservablePrograms();
+          haptic("success");
+          showToast(select ? "رزرو با موفقیت انجام شد 🎉" : "رزرو با موفقیت لغو شد ✕");
           loadCreditInfo(false);
         } else {
-          showToast("خطا: " + (json.message || "رزرو انجام نشد."));
+          // Revert optimistic update on failure
+          targetFood.isReserved = prevReserved;
+          if (currentUser && currentUser.credit_toman !== undefined) {
+            currentUser.credit_toman += (select ? priceToman : -priceToman);
+            renderUserInfo(currentUser);
+          }
+          renderDayPills();
+          renderSelectedDayMeals();
+          haptic("error");
+          showToast("خطا: " + (json.message || "عملیات انجام نشد."));
         }
-      } catch {
-        showToast("خطا در برقراری ارتباط");
+      } catch (err) {
+        // Revert on network error
+        targetFood.isReserved = prevReserved;
+        if (currentUser && currentUser.credit_toman !== undefined) {
+          currentUser.credit_toman += (select ? priceToman : -priceToman);
+          renderUserInfo(currentUser);
+        }
+        renderDayPills();
+        renderSelectedDayMeals();
+        haptic("error");
+        showToast("خطا در برقراری ارتباط با صمد");
       }
     }
 
+    // -------------------------------------------------------------
+    // Favorite Foods & Smart Auto-Reservation in Mini App
+    // -------------------------------------------------------------
+    function renderFavoritesChips() {
+      const container = document.getElementById("favorites-chip-container");
+      const badge = document.getElementById("fav-count-badge");
+      if (badge) badge.innerText = `${userFavorites.length} مورد`;
+      if (!container) return;
+
+      if (!userFavorites || userFavorites.length === 0) {
+        container.innerHTML = `<span style="font-size:11px; color:var(--hint);">هنوز غذایی به علاقه‌مندی‌ها اضافه نشده است.</span>`;
+        return;
+      }
+
+      let html = "";
+      userFavorites.forEach(fav => {
+        const safeFav = fav.replace(/'/g, "\\'");
+        html += `
+          <div class="fav-chip">
+            <span>${fav}</span>
+            <span class="fav-chip-del" onclick="removeFavoriteFromApp('${safeFav}')" title="حذف">✕</span>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderAutoReserveStatus() {
+      const btn = document.getElementById("btn-autoreserve-toggle");
+      if (!btn) return;
+      if (autoReserveEnabled) {
+        btn.innerHTML = `✅ فعال`;
+        btn.className = "btn btn-pay btn-sm";
+      } else {
+        btn.innerHTML = `🔕 غیرفعال`;
+        btn.className = "btn btn-secondary btn-sm";
+      }
+    }
+
+    async function addFavoriteFromApp() {
+      const input = document.getElementById("input-new-favorite");
+      const val = input.value.trim();
+      if (!val) {
+        showToast("لطفاً نام یا کلمه کلیدی غذا را وارد کنید.");
+        return;
+      }
+
+      haptic("medium");
+      try {
+        const res = await apiFetch("/api/favorites/add", {
+          method: "POST",
+          body: JSON.stringify({ telegram_id: currentTelegramId, food_name: val })
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.favorites)) {
+          userFavorites = data.favorites;
+          renderFavoritesChips();
+          input.value = "";
+          haptic("success");
+          showToast(`«${val}» به لیست علاقه‌مندی‌ها افزوده شد ⭐️`);
+        }
+      } catch {
+        showToast("خطا در افزودن غذای موردعلاقه");
+      }
+    }
+
+    async function removeFavoriteFromApp(foodName) {
+      haptic("warning");
+      try {
+        const res = await apiFetch("/api/favorites/delete", {
+          method: "POST",
+          body: JSON.stringify({ telegram_id: currentTelegramId, food_name: foodName })
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.favorites)) {
+          userFavorites = data.favorites;
+          renderFavoritesChips();
+          showToast(`«${foodName}» از علاقه‌مندی‌ها حذف شد ✕`);
+        }
+      } catch {
+        showToast("خطا در حذف غذا");
+      }
+    }
+
+    async function toggleAutoReserveInApp() {
+      haptic("medium");
+      const nextState = !autoReserveEnabled;
+      try {
+        const res = await apiFetch("/api/auto-reserve/toggle", {
+          method: "POST",
+          body: JSON.stringify({ telegram_id: currentTelegramId, enabled: nextState })
+        });
+        const data = await res.json();
+        if (data.success) {
+          autoReserveEnabled = data.enabled;
+          renderAutoReserveStatus();
+          haptic(autoReserveEnabled ? "success" : "warning");
+          showToast(autoReserveEnabled ? "رزرو خودکار هوشمند فعال شد 🤖" : "رزرو خودکار غیرفعال شد 🔕");
+        }
+      } catch {
+        showToast("خطا در تغییر وضعیت رزرو خودکار");
+      }
+    }
+
+    async function triggerAutoReserveFromApp() {
+      haptic("medium");
+      const btn = document.getElementById("btn-run-autoreserve-app");
+      btn.innerHTML = `<span class="spin">⏳</span> در حال بررسی منو و رزرو...`;
+      btn.disabled = true;
+
+      try {
+        const res = await apiFetch("/api/auto-reserve/run-now", {
+          method: "POST",
+          body: JSON.stringify({ telegram_id: currentTelegramId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const sum = data.summary;
+          const reservedCount = sum?.reservedMeals?.length || 0;
+          const lowCreditCount = sum?.lowCreditAlerts?.length || 0;
+
+          if (reservedCount > 0) {
+            haptic("success");
+            showToast(`${reservedCount} وعده با موفقیت رزرو خودکار شد 🎉`);
+            loadTodayMeals();
+            loadReservablePrograms();
+            loadCreditInfo();
+          } else if (lowCreditCount > 0) {
+            haptic("error");
+            showToast("کسری موجودی برای رزرو غذای محبوب ⚠️");
+          } else {
+            showToast("بررسی انجام شد. وعده جدیدی برای رزرو وجود ندارد.");
+          }
+        }
+      } catch {
+        showToast("خطا در اجرای رزرو خودکار");
+      } finally {
+        btn.innerHTML = `⚡️ بررسی و رزرو خودکار همین حالا`;
+        btn.disabled = false;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // QR Code & Barcode Delivery Modal with In-Memory Caching
+    // -------------------------------------------------------------
     async function showQrModal(foodTitle, reserveId) {
-      haptic("impact");
+      haptic("medium");
       document.getElementById("qr-food-title").innerText = foodTitle;
       document.getElementById("qr-code-number").innerText = "⏳...";
       document.getElementById("qr-modal-img").src = "";
-      document.getElementById("qr-modal").classList.add("show");
+      openModal("qr-modal");
+
+      // Check cache first for 0ms render
+      if (forgetCodeCache.has(reserveId)) {
+        const cached = forgetCodeCache.get(reserveId);
+        document.getElementById("qr-code-number").innerText = cached;
+        document.getElementById("qr-modal-img").src = `${API_BASE}/api/qr?text=${encodeURIComponent(cached)}`;
+        return;
+      }
 
       try {
-        const res = await fetch(`/api/forget-code?user_id=${currentTelegramId}&reserve_id=${reserveId}`);
+        const res = await apiFetch(`/api/forget-code?user_id=${currentTelegramId}&reserve_id=${reserveId}`);
         const data = await res.json();
         if (data.code) {
+          forgetCodeCache.set(reserveId, data.code);
           document.getElementById("qr-code-number").innerText = data.code;
-          document.getElementById("qr-modal-img").src = `/api/qr?text=${encodeURIComponent(data.code)}`;
+          document.getElementById("qr-modal-img").src = `${API_BASE}/api/qr?text=${encodeURIComponent(data.code)}`;
         } else {
           document.getElementById("qr-code-number").innerText = "ناموفق";
         }
@@ -820,26 +1392,54 @@
       }
     }
 
-    function closeModal() {
-      document.getElementById("qr-modal").classList.remove("show");
+    function copyDeliveryCode() {
+      const code = document.getElementById("qr-code-number").innerText;
+      if (!code || code === "⏳..." || code === "------" || code === "خطا" || code === "ناموفق") return;
+      
+      haptic("success");
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          showToast(`کد ${code} کپی شد 📋`);
+        }).catch(() => {
+          fallbackCopyText(code);
+        });
+      } else {
+        fallbackCopyText(code);
+      }
     }
 
+    function fallbackCopyText(text) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      showToast(`کد ${text} کپی شد 📋`);
+    }
+
+    // -------------------------------------------------------------
+    // Dining Halls (سلف‌ها)
+    // -------------------------------------------------------------
     async function loadSelfs() {
       try {
-        const res = await fetch(`/api/selfs?user_id=${currentTelegramId}`);
+        const res = await apiFetch(`/api/selfs?user_id=${currentTelegramId}`);
         const data = await res.json();
         currentSelfs = data.selfs || [];
+        renderSelfsOptions(currentSelfs);
+      } catch (e) {}
+    }
 
-        const sel1 = document.getElementById("reserve-self-select");
-        const sel2 = document.getElementById("profile-self-select");
-        let html = "";
-        currentSelfs.forEach(s => {
-          const selected = s.id === currentUser?.selected_self_id ? "selected" : "";
-          html += `<option value="${s.id}" ${selected}>${s.name}</option>`;
-        });
-        sel1.innerHTML = html;
-        sel2.innerHTML = html;
-      } catch(e){}
+    function renderSelfsOptions(selfs) {
+      const sel1 = document.getElementById("reserve-self-select");
+      const sel2 = document.getElementById("profile-self-select");
+      let html = "";
+      selfs.forEach(s => {
+        const selected = s.id === currentUser?.selected_self_id ? "selected" : "";
+        html += `<option value="${s.id}" ${selected}>${s.name}</option>`;
+      });
+      if (sel1) sel1.innerHTML = html;
+      if (sel2) sel2.innerHTML = html;
     }
 
     function changeReserveSelf() {
@@ -850,16 +1450,16 @@
       const sId = document.getElementById("profile-self-select").value;
       const sName = document.getElementById("profile-self-select").options[document.getElementById("profile-self-select").selectedIndex]?.text;
       if (!sId) return;
-      haptic("impact");
+
+      haptic("medium");
       try {
-        const res = await fetch("/api/select-self", {
+        const res = await apiFetch("/api/select-self", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ telegram_id: currentTelegramId, self_id: parseInt(sId, 10), self_name: sName })
         });
         const data = await res.json();
         if (data.success) {
-          showToast("سلف پیش‌فرض با موفقیت ثبت شد.");
+          showToast("سلف پیش‌فرض با موفقیت ثبت شد ✅");
           currentUser.selected_self_id = parseInt(sId, 10);
           currentUser.selected_self_name = sName;
           document.getElementById("head-self-name").innerText = "🏛 سلف: " + sName;
@@ -869,18 +1469,26 @@
       }
     }
 
-    async function loadCreditInfo(toast = false) {
-      if (toast) showToast("در حال استعلام موجودی...");
+    // -------------------------------------------------------------
+    // TAB 3: Wallet & Transactions
+    // -------------------------------------------------------------
+    async function loadCreditInfo(showNotification = false) {
+      const refreshBtn = document.getElementById("wallet-refresh-btn");
+      if (showNotification && refreshBtn) {
+        refreshBtn.innerHTML = `<span class="spin">🔄</span> در حال استعلام...`;
+        refreshBtn.disabled = true;
+      }
+
       try {
-        const res = await fetch(`/api/credit?user_id=${currentTelegramId}`);
+        const res = await apiFetch(`/api/credit?user_id=${currentTelegramId}`);
         const data = await res.json();
         if (data.success) {
-          if (data.pay_url) {
-            PAY_SHARIF_URL = data.pay_url;
-          }
-          const tomanStr = (data.credit_toman || 0).toLocaleString("fa-IR") + " ت";
+          if (data.pay_url) PAY_SHARIF_URL = data.pay_url;
+
+          const tomanVal = data.credit_toman || 0;
+          const tomanStr = tomanVal.toLocaleString("fa-IR") + " ت";
           document.getElementById("head-balance-toman").innerText = tomanStr;
-          document.getElementById("wallet-balance-toman").innerText = (data.credit_toman || 0).toLocaleString("fa-IR") + " تومان";
+          document.getElementById("wallet-balance-toman").innerText = tomanVal.toLocaleString("fa-IR") + " تومان";
           document.getElementById("wallet-balance-rials").innerText = (data.credit_rials || 0).toLocaleString("fa-IR") + " ریال";
 
           const container = document.getElementById("wallet-transactions-container");
@@ -891,36 +1499,68 @@
             data.transactions.slice(0, 10).forEach(t => {
               const sign = t.amount >= 0 ? "+" : "-";
               const color = t.amount >= 0 ? "var(--success)" : "var(--danger)";
+              const formattedAmt = Math.floor(Math.abs(t.amount) / 10).toLocaleString("fa-IR");
               html += `
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:8px 0; font-size:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0; font-size:12px;">
                   <div>
                     <div style="font-weight:700;">${t.description || "تراکنش"}</div>
-                    <div style="color:var(--hint); font-size:10px;">${t.date || ""}</div>
+                    <div style="color:var(--hint); font-size:11px; margin-top:2px;">${t.date || ""}</div>
                   </div>
-                  <div style="font-weight:700; color:${color}; direction:ltr;">
-                    ${sign}${Math.floor(Math.abs(t.amount) / 10).toLocaleString("fa-IR")} تومان
+                  <div style="font-weight:800; color:${color}; direction:ltr;">
+                    ${sign}${formattedAmt} تومان
                   </div>
                 </div>
               `;
             });
             container.innerHTML = html;
           }
-          if (toast) showToast("موجودی به‌روز شد.");
+          if (showNotification) showToast("موجودی حساب بروزرسانی شد ✅");
         }
-      } catch(e){}
+      } catch (e) {
+        if (showNotification) showToast("خطا در استعلام موجودی");
+      } finally {
+        if (refreshBtn) {
+          refreshBtn.innerHTML = `🔄 بروزرسانی آنی موجودی`;
+          refreshBtn.disabled = false;
+        }
+      }
     }
 
+    // -------------------------------------------------------------
+    // Authentication & Captcha
+    // -------------------------------------------------------------
     async function loadCaptcha() {
+      const reloadBtn = document.getElementById("captcha-reload-btn");
+      if (reloadBtn) reloadBtn.innerHTML = `<span class="spin">🔄</span>`;
+
       try {
-        const res = await fetch("/api/captcha");
+        const res = await apiFetch("/api/captcha");
         const data = await res.json();
         captchaData = data;
         if (data.imageBase64) {
           document.getElementById("captcha-group").style.display = "block";
           document.getElementById("captcha-img").src = "data:image/png;base64," + data.imageBase64;
+          document.getElementById("login-captcha").value = "";
         }
-      } catch(e){}
+      } catch (e) {
+      } finally {
+        if (reloadBtn) reloadBtn.innerHTML = `🔄`;
+      }
     }
+
+    function togglePasswordVisibility() {
+      const inp = document.getElementById("login-password");
+      if (inp) {
+        inp.type = inp.type === "password" ? "text" : "password";
+      }
+    }
+
+    // Submit login with Enter key support
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && document.getElementById("login-modal").classList.contains("show")) {
+        submitLogin();
+      }
+    });
 
     async function submitLogin() {
       const u = document.getElementById("login-username").value.trim();
@@ -932,15 +1572,14 @@
         return;
       }
 
-      haptic("impact");
+      haptic("medium");
       const btn = document.getElementById("login-submit-btn");
-      btn.innerText = "در حال ورود...";
+      btn.innerHTML = `<span class="spin">⏳</span> در حال بررسی اطلاعات...`;
       btn.disabled = true;
 
       try {
-        const res = await fetch("/api/login", {
+        const res = await apiFetch("/api/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             telegram_id: currentTelegramId,
             username: u,
@@ -954,20 +1593,27 @@
         if (data.success && data.user) {
           currentUser = data.user;
           currentTelegramId = data.user.telegram_id;
-          try { localStorage.setItem("foodbot_telegram_id", String(currentTelegramId)); } catch(e){}
-          document.getElementById("login-modal").classList.remove("show");
+          try {
+            localStorage.setItem("foodbot_telegram_id", String(currentTelegramId));
+            localStorage.setItem("foodbot_saved_username", u);
+          } catch(e){}
+
+          closeActiveModal();
+          haptic("success");
           showToast("ورود با موفقیت انجام شد 🎉");
           renderUserInfo(currentUser);
           loadTodayMeals();
           loadSelfs();
         } else {
+          haptic("error");
           showToast("خطا: " + (data.message || "اطلاعات ورود اشتباه است"));
           loadCaptcha();
         }
       } catch {
+        haptic("error");
         showToast("خطا در برقراری ارتباط با صمد");
       } finally {
-        btn.innerText = "ورود به حساب صمد";
+        btn.innerHTML = "ورود به حساب صمد";
         btn.disabled = false;
       }
     }
@@ -976,9 +1622,8 @@
       if (!confirm("آیا از خروج از حساب اطمینان دارید؟")) return;
       haptic("warning");
       try {
-        await fetch("/api/logout", {
+        await apiFetch("/api/logout", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ telegram_id: currentTelegramId })
         });
         location.reload();
@@ -987,6 +1632,7 @@
       }
     }
 
+    // Start App Boot
     initApp();
   </script>
 </body>

@@ -21,12 +21,54 @@ export interface User {
   selected_self_name?: string;
   full_name?: string;
   auto_send_code?: number;
+  auto_reserve_enabled?: number;
+  auto_reserve_scope?: string;
+  auto_reserve_days?: string;
   created_at?: number;
   updated_at?: number;
 }
 
+export interface FavoriteFood {
+  id: number;
+  telegram_id: number;
+  food_name: string;
+  created_at?: number;
+}
+
+export interface AutoReserveResultItem {
+  programId: number;
+  foodName: string;
+  dayTranslated: string;
+  dateJStr: string;
+  mealTitle: string;
+  selfName: string;
+  price: number;
+}
+
+export interface LowCreditAlertItem {
+  foodName: string;
+  requiredToman: number;
+  balanceToman: number;
+  mealTitle: string;
+  dayTitle: string;
+}
+
+export interface AutoReserveUserSummary {
+  telegramId: number;
+  reservedMeals: AutoReserveResultItem[];
+  lowCreditAlerts: LowCreditAlertItem[];
+  errors: string[];
+}
+
+export interface AutoReserveSummary {
+  timestamp: number;
+  usersProcessed: number;
+  mealsReserved: number;
+  summaries: AutoReserveUserSummary[];
+}
+
 export interface UserSession {
-  step?: "WAITING_USERNAME" | "WAITING_PASSWORD" | "WAITING_CAPTCHA";
+  step?: "WAITING_USERNAME" | "WAITING_PASSWORD" | "WAITING_CAPTCHA" | "WAITING_FAVORITE_NAME";
   tempUsername?: string;
   tempPassword?: string;
   captchaNonce?: string;

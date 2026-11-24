@@ -24,6 +24,8 @@ database_id = "e187567f-4211-486f-8877-d75c94b64dd4"
 binding = "KV"
 id = "0b1aa93c21754d258913972d7176c86c"
 
-# Cron Triggers (UTC): 07:30 UTC = 11:00 AM Asia/Tehran (UTC+03:30), Saturday to Wednesday
+# Cron Triggers (UTC):
+# - 07:30 UTC = 11:00 AM Asia/Tehran (Auto-send today's delivery QR code)
+# - 18:00 UTC = 21:30 PM Asia/Tehran (Nightly smart auto-reservation of favorite meals)
 [triggers]
-crons = ["30 7 * * SAT,SUN,MON,TUE,WED"]
+crons = ["30 7 * * SAT,SUN,MON,TUE,WED", "0 18 * * SAT,SUN,MON,TUE,WED"]

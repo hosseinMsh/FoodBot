@@ -13,18 +13,52 @@ import {
   normalizeWeeklyPrograms,
 } from "./date";
 import { generateQrPng } from "./qr";
-import { extractTodayMeals, sendDailyMealCodes } from "./scheduler";
+import { extractTodayMeals, sendDailyMealCodes, runAutoReserveEngine } from "./scheduler";
 
-function jsonResponse(data: any, status: number = 200): Response {
+function jsonResponse(data: any, status: number = 200, cacheControl: string = "no-store"): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json;charset=UTF-8",
+      "Cache-Control": cacheControl,
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type,X-Telegram-Init-Data",
     },
   });
+}
+
+function extractTelegramId(request: Request, url: URL, body?: any): number {
+  // 1. From X-Telegram-Init-Data header (parsed user.id)
+  const initData = request.headers.get("X-Telegram-Init-Data");
+  if (initData) {
+    try {
+      const params = new URLSearchParams(initData);
+      const userStr = params.get("user");
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        if (parsed && parsed.id) {
+          const num = parseInt(parsed.id, 10);
+          if (!isNaN(num) && num > 0) return num;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. From query parameters (?user_id= or ?id=)
+  const qId = url.searchParams.get("user_id") || url.searchParams.get("id");
+  if (qId) {
+    const parsed = parseInt(qId, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+
+  // 3. From request body
+  if (body && body.telegram_id) {
+    const parsed = parseInt(String(body.telegram_id), 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+
+  return 0;
 }
 
 export default {
@@ -122,10 +156,9 @@ export default {
     // 3. Mini App REST API Endpoints
     // ==========================================
 
-    // GET /api/me - Profile, status and balance
+    // GET /api/me - Profile, status, balance and optional selfs
     if (path === "/api/me" && request.method === "GET") {
-      const userIdStr = url.searchParams.get("user_id") || url.searchParams.get("id");
-      const telegramId = parseInt(userIdStr || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       if (!telegramId) {
         return jsonResponse({ logged_in: false, message: "شناسه تلگرام یافت نشد" });
       }
@@ -137,12 +170,21 @@ export default {
 
       let creditToman = 0;
       let creditRials = 0;
+      let selfs: any[] = [];
+      let favorites: string[] = [];
+      try {
+        favorites = await db.getFavoriteFoods(env.DB, telegramId);
+      } catch {}
+
       try {
         const client = await SamadClient.forUser(env, telegramId);
         if (client) {
           const nurture = await client.getNurtureProfile();
           creditRials = nurture.currentCredit || 0;
           creditToman = Math.floor(creditRials / 10);
+          try {
+            selfs = await client.getAvailableSelfs();
+          } catch {}
         }
       } catch {}
 
@@ -156,14 +198,18 @@ export default {
           selected_self_name: user.selected_self_name,
           credit_toman: creditToman,
           credit_rials: creditRials,
+          auto_send_code: user.auto_send_code !== 0,
+          auto_reserve_enabled: user.auto_reserve_enabled === 1,
         },
+        selfs,
+        favorites,
       });
     }
 
     // POST /api/login - Log into Samad & save session
     if (path === "/api/login" && request.method === "POST") {
       const body: any = await request.json().catch(() => ({}));
-      let telegramId = parseInt(body.telegram_id || "0", 10);
+      let telegramId = extractTelegramId(request, url, body);
       if (!telegramId && body.username) {
         // Fallback: Check if user already exists in D1
         const existing = await db.getUserByUsername(env.DB, body.username);
@@ -252,7 +298,7 @@ export default {
 
     // GET /api/today - Today's reserved meals
     if (path === "/api/today" && request.method === "GET") {
-      const telegramId = parseInt(url.searchParams.get("user_id") || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ error: "کاربر وارد نشده است" }, 401);
 
@@ -263,12 +309,14 @@ export default {
 
         return jsonResponse({
           dateJalali: `${today.persianDayName} ${today.jalaliDate}`,
+          isoDate: today.isoDate,
           meals: todayMeals.map(({ mealTitle, res }) => ({
             reserveId: res.id || res.reserveId,
             foodName: (res.foodNames || res.foodName || res.foodTitle || "غذا").replace(/\|+$/, ""),
             mealTypeName: mealTitle || res.mealTypeName || "وعده",
             selfName: res.selfName || res.self || "",
             price: res.price || 0,
+            priceToman: Math.floor((res.price || 0) / 10),
             state: res.state,
             delivered: !!(res.consumed || res.state === 3 || res.delivered),
           })),
@@ -280,7 +328,7 @@ export default {
 
     // GET /api/programs - Weekly reservable meals
     if (path === "/api/programs" && request.method === "GET") {
-      const telegramId = parseInt(url.searchParams.get("user_id") || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ error: "کاربر وارد نشده است" }, 401);
 
@@ -302,7 +350,7 @@ export default {
     // POST /api/reserve - Reserve / Cancel a meal
     if (path === "/api/reserve" && request.method === "POST") {
       const body: any = await request.json().catch(() => ({}));
-      const telegramId = parseInt(body.telegram_id || "0", 10);
+      const telegramId = extractTelegramId(request, url, body);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ success: false, message: "کاربر وارد نشده است" }, 401);
 
@@ -321,7 +369,7 @@ export default {
 
     // GET /api/forget-code - Delivery code
     if (path === "/api/forget-code" && request.method === "GET") {
-      const telegramId = parseInt(url.searchParams.get("user_id") || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       const reserveId = parseInt(url.searchParams.get("reserve_id") || "0", 10);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ error: "کاربر وارد نشده است" }, 401);
@@ -329,7 +377,7 @@ export default {
       try {
         const data = await client.getForgetCode(reserveId);
         const code =
-          data?.code || data?.forgetCode || data?.barcode || (typeof data === "string" ? data : "");
+          data?.code || data?.forgetCode || data?.forgotCardCode || data?.barcode || (typeof data === "string" ? data : "");
         return jsonResponse({ code: String(code || "") });
       } catch (e: any) {
         return jsonResponse({ error: e.message }, 500);
@@ -354,7 +402,7 @@ export default {
 
     // GET /api/credit - Balance, payment link, token login, and transactions
     if (path === "/api/credit" && request.method === "GET") {
-      const telegramId = parseInt(url.searchParams.get("user_id") || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ success: false, message: "کاربر وارد نشده است" }, 401);
 
@@ -399,7 +447,7 @@ export default {
 
     // GET /api/selfs - List all available dining halls
     if (path === "/api/selfs" && request.method === "GET") {
-      const telegramId = parseInt(url.searchParams.get("user_id") || "0", 10);
+      const telegramId = extractTelegramId(request, url);
       const client = await SamadClient.forUser(env, telegramId);
       if (!client) return jsonResponse({ selfs: [] });
       try {
@@ -413,7 +461,7 @@ export default {
     // POST /api/select-self - Update user's active self
     if (path === "/api/select-self" && request.method === "POST") {
       const body: any = await request.json().catch(() => ({}));
-      const telegramId = parseInt(body.telegram_id || "0", 10);
+      const telegramId = extractTelegramId(request, url, body);
       if (telegramId && body.self_id) {
         await db.updateSelectedSelf(env.DB, telegramId, body.self_id, body.self_name || "سلف");
         return jsonResponse({ success: true });
@@ -424,12 +472,77 @@ export default {
     // POST /api/logout - End session
     if (path === "/api/logout" && request.method === "POST") {
       const body: any = await request.json().catch(() => ({}));
-      const telegramId = parseInt(body.telegram_id || "0", 10);
+      const telegramId = extractTelegramId(request, url, body);
       if (telegramId) {
         await db.deleteUser(env.DB, telegramId);
         return jsonResponse({ success: true });
       }
       return jsonResponse({ success: false }, 400);
+    }
+
+    // GET /api/favorites - List favorite foods
+    if (path === "/api/favorites" && request.method === "GET") {
+      const telegramId = extractTelegramId(request, url);
+      if (!telegramId) return jsonResponse({ success: false, favorites: [] }, 401);
+      const favorites = await db.getFavoriteFoods(env.DB, telegramId);
+      return jsonResponse({ success: true, favorites });
+    }
+
+    // POST /api/favorites/add - Add favorite food
+    if (path === "/api/favorites/add" && request.method === "POST") {
+      const body: any = await request.json().catch(() => ({}));
+      const telegramId = extractTelegramId(request, url, body);
+      if (!telegramId || !body.food_name) return jsonResponse({ success: false }, 400);
+      await db.addFavoriteFood(env.DB, telegramId, body.food_name);
+      const favorites = await db.getFavoriteFoods(env.DB, telegramId);
+      return jsonResponse({ success: true, favorites });
+    }
+
+    // POST /api/favorites/delete - Remove favorite food
+    if (path === "/api/favorites/delete" && request.method === "POST") {
+      const body: any = await request.json().catch(() => ({}));
+      const telegramId = extractTelegramId(request, url, body);
+      if (!telegramId || !body.food_name) return jsonResponse({ success: false }, 400);
+      await db.removeFavoriteFood(env.DB, telegramId, body.food_name);
+      const favorites = await db.getFavoriteFoods(env.DB, telegramId);
+      return jsonResponse({ success: true, favorites });
+    }
+
+    // GET /api/auto-reserve - Get auto-reserve settings
+    if (path === "/api/auto-reserve" && request.method === "GET") {
+      const telegramId = extractTelegramId(request, url);
+      if (!telegramId) return jsonResponse({ success: false }, 401);
+      const user = await db.getUser(env.DB, telegramId);
+      const favorites = await db.getFavoriteFoods(env.DB, telegramId);
+      return jsonResponse({
+        success: true,
+        enabled: user?.auto_reserve_enabled === 1,
+        scope: user?.auto_reserve_scope || "ALL",
+        days: user?.auto_reserve_days || "MON,TUE,WED",
+        self_name: user?.selected_self_name || "تعیین نشده",
+        favorites_count: favorites.length,
+      });
+    }
+
+    // POST /api/auto-reserve/toggle - Toggle auto-reserve
+    if (path === "/api/auto-reserve/toggle" && request.method === "POST") {
+      const body: any = await request.json().catch(() => ({}));
+      const telegramId = extractTelegramId(request, url, body);
+      if (!telegramId) return jsonResponse({ success: false }, 401);
+      const user = await db.getUser(env.DB, telegramId);
+      const newState = body.enabled !== undefined ? !!body.enabled : user?.auto_reserve_enabled !== 1;
+      await db.setAutoReserveSettings(env.DB, telegramId, newState);
+      return jsonResponse({ success: true, enabled: newState });
+    }
+
+    // POST /api/auto-reserve/run-now - Trigger auto-reserve on-demand
+    if (path === "/api/auto-reserve/run-now" && request.method === "POST") {
+      const body: any = await request.json().catch(() => ({}));
+      const telegramId = extractTelegramId(request, url, body);
+      if (!telegramId) return jsonResponse({ success: false, message: "کاربر یافت نشد" }, 401);
+      const summary = await runAutoReserveEngine(env, { targetUserId: telegramId });
+      const userSummary = summary.summaries.find((s) => s.telegramId === telegramId);
+      return jsonResponse({ success: true, summary: userSummary });
     }
 
     // ==========================================
@@ -569,17 +682,33 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(
-      sendDailyMealCodes(env)
-        .then((summary) => {
-          console.log(
-            `[Cron ${controller.cron}] Daily meal code dispatch complete:`,
-            JSON.stringify(summary)
-          );
-        })
-        .catch((err) => {
-          console.error(`[Cron ${controller.cron}] Daily meal code dispatch failed:`, err);
-        })
-    );
+    const isNightCron = controller.cron.includes("18") || controller.cron.includes("0 18");
+    if (isNightCron) {
+      ctx.waitUntil(
+        runAutoReserveEngine(env)
+          .then((summary) => {
+            console.log(
+              `[Cron ${controller.cron}] Nightly auto-reserve complete:`,
+              JSON.stringify(summary)
+            );
+          })
+          .catch((err) => {
+            console.error(`[Cron ${controller.cron}] Nightly auto-reserve failed:`, err);
+          })
+      );
+    } else {
+      ctx.waitUntil(
+        sendDailyMealCodes(env)
+          .then((summary) => {
+            console.log(
+              `[Cron ${controller.cron}] Daily meal code dispatch complete:`,
+              JSON.stringify(summary)
+            );
+          })
+          .catch((err) => {
+            console.error(`[Cron ${controller.cron}] Daily meal code dispatch failed:`, err);
+          })
+      );
+    }
   },
 };

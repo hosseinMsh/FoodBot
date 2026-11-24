@@ -6,24 +6,27 @@ from telegram.ext import ContextTypes
 import database
 from samad_client import SamadClient
 
-# Main Menu Keyboard Buttons
-BTN_TODAY = "🍽 دریافت غذای روز"
-BTN_REMAINING = "📋 غذاهای رزرو مانده هفته"
-BTN_NEXT_WEEK = "📅 لیست غذاهای هفته بعدی"
+# Main Menu Keyboard Buttons with clean Unicode icons (No stickers!)
+BTN_TODAY = "🍽 غذای امروز و بارکد"
+BTN_REMAINING = "📋 رزروهای مانده هفته"
+BTN_NEXT_WEEK = "📅 منوی هفته آینده"
 BTN_BUY = "🛒 خرید و رزرو غذا"
-BTN_CREDIT = "💰 مانده اعتبار"
+BTN_FAVORITES = "⭐️ غذاهای موردعلاقه"
+BTN_AUTORESERVE = "🤖 رزرو خودکار هوشمند"
+BTN_CREDIT = "💰 موجودی و شارژ"
 BTN_CHARGE = "💳 افزایش اعتبار"
 BTN_SELF = "⚙️ انتخاب سلف"
 BTN_PROFILE = "👤 حساب کاربری"
 
 
 def get_main_keyboard() -> ReplyKeyboardMarkup:
-    """Returns the main persistent reply keyboard."""
+    """Returns the main persistent reply keyboard with balanced ergonomic rows."""
     keyboard = [
         [KeyboardButton(BTN_TODAY), KeyboardButton(BTN_REMAINING)],
         [KeyboardButton(BTN_NEXT_WEEK), KeyboardButton(BTN_BUY)],
-        [KeyboardButton(BTN_CREDIT), KeyboardButton(BTN_CHARGE)],
-        [KeyboardButton(BTN_SELF), KeyboardButton(BTN_PROFILE)],
+        [KeyboardButton(BTN_FAVORITES), KeyboardButton(BTN_AUTORESERVE)],
+        [KeyboardButton(BTN_CREDIT), KeyboardButton(BTN_SELF)],
+        [KeyboardButton(BTN_PROFILE)],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -60,7 +63,7 @@ async def check_authenticated(
             "لطفاً با ارسال دستور /login یا فشردن دکمه ورود، شماره دانشجویی و رمز عبور خود را وارد کنید."
         )
         if update.callback_query:
-            await update.callback_query.answer()
+            await update.callback_query.answer("ابتدا وارد شوید.", show_alert=True)
             await update.callback_query.message.reply_html(msg)
         elif update.message:
             await update.message.reply_html(msg)

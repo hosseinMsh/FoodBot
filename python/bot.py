@@ -28,6 +28,8 @@ from handlers.common import (
     BTN_REMAINING,
     BTN_NEXT_WEEK,
     BTN_BUY,
+    BTN_FAVORITES,
+    BTN_AUTORESERVE,
     BTN_CREDIT,
     BTN_CHARGE,
     BTN_SELF,
@@ -48,6 +50,21 @@ from handlers.today_food import (
     autocode_command,
     toggle_autocode_callback,
     send_daily_meal_codes_job,
+)
+
+from handlers.favorites import (
+    favorites_command,
+    get_favorite_conversation_handler,
+    fav_del_callback,
+    fav_show_suggestions_callback,
+    fav_add_suggested_callback,
+)
+
+from handlers.autoreserve import (
+    autoreserve_command,
+    toggle_autoreserve_callback,
+    run_autoreserve_now_callback,
+    send_nightly_autoreserve_job,
 )
 
 from handlers.next_week import (
@@ -103,6 +120,8 @@ async def post_init(application: Application):
         BotCommand("autocode", "ارسال خودکار کد تحویل ساعت ۱۱"),
         BotCommand("nextweek", "برنامه غذایی هفته آینده"),
         BotCommand("remaining", "غذاهای رزرو مانده هفته جاری"),
+        BotCommand("favorites", "⭐️ غذاهای موردعلاقه من"),
+        BotCommand("autoreserve", "🤖 رزرو خودکار هوشمند"),
         BotCommand("credit", "مانده اعتبار کیف پول"),
         BotCommand("charge", "افزایش اعتبار آنلاین"),
         BotCommand("buy", "خرید و رزرو غذا"),
@@ -197,8 +216,9 @@ def main():
 
     app = builder.build()
 
-    # Conversation handler for login
+    # Conversation handlers
     app.add_handler(get_login_conversation_handler())
+    app.add_handler(get_favorite_conversation_handler())
 
     # Basic Commands
     app.add_handler(CommandHandler("start", start_command))
@@ -238,6 +258,18 @@ def main():
     # Feature 6: خرید غذا
     app.add_handler(CommandHandler("buy", buy_food_command))
     app.add_handler(MessageHandler(filters.Regex(f"^{BTN_BUY}$"), buy_food_command))
+
+    # Feature 7: غذاهای موردعلاقه من
+    app.add_handler(CommandHandler(["favorites", "fav"], favorites_command))
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{BTN_FAVORITES}$"), favorites_command)
+    )
+
+    # Feature 8: رزرو خودکار هوشمند غذا
+    app.add_handler(CommandHandler(["autoreserve", "auto"], autoreserve_command))
+    app.add_handler(
+        MessageHandler(filters.Regex(f"^{BTN_AUTORESERVE}$"), autoreserve_command)
+    )
 
     # Settings: سلف و پروفایل
     app.add_handler(CommandHandler("self", select_self_command))
@@ -304,6 +336,34 @@ def main():
         CallbackQueryHandler(toggle_autocode_callback, pattern=r"^toggle_autocode$")
     )
 
+    # Callbacks for Favorite Foods & Auto-Reserve
+    app.add_handler(CallbackQueryHandler(fav_del_callback, pattern=r"^py_fav_del_"))
+    app.add_handler(
+        CallbackQueryHandler(fav_show_suggestions_callback, pattern=r"^py_fav_sug_show$")
+    )
+    app.add_handler(
+        CallbackQueryHandler(fav_add_suggested_callback, pattern=r"^py_fav_sug_add_")
+    )
+    app.add_handler(
+        CallbackQueryHandler(favorites_command, pattern=r"^py_fav_back$")
+    )
+    app.add_handler(
+        CallbackQueryHandler(autoreserve_command, pattern=r"^py_open_autoreserve$")
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            toggle_autoreserve_callback, pattern=r"^py_toggle_autoreserve$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            run_autoreserve_now_callback, pattern=r"^py_run_autoreserve_now$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern=r"^py_noop$")
+    )
+
     # Schedule automatic daily delivery code & QR dispatch:
     # 11:00 AM Asia/Tehran (UTC+03:30), Saturday (6) through Wednesday (3)
     if app.job_queue is not None:
@@ -315,9 +375,19 @@ def main():
             name="daily_meal_codes",
         )
         logger.info("Scheduled daily auto-code job: 11:00 AM Asia/Tehran (Sat-Wed).")
+
+        # Nightly auto-reservation:
+        # 21:30 PM Asia/Tehran (UTC+03:30), Saturday through Wednesday
+        app.job_queue.run_daily(
+            send_nightly_autoreserve_job,
+            time=dt_time(hour=21, minute=30, tzinfo=tehran_tz),
+            days=(6, 0, 1, 2, 3),  # 6=Sat, 0=Sun, 1=Mon, 2=Tue, 3=Wed
+            name="nightly_autoreserve",
+        )
+        logger.info("Scheduled nightly auto-reserve job: 21:30 Asia/Tehran (Sat-Wed).")
     else:
         logger.warning(
-            "JobQueue is not available. Install 'python-telegram-bot[job-queue]' to enable 11:00 AM auto-code."
+            "JobQueue is not available. Install 'python-telegram-bot[job-queue]' to enable 11:00 AM auto-code and 21:30 auto-reserve."
         )
 
     allowed_updates = (

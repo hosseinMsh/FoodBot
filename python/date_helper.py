@@ -3,9 +3,11 @@ Helper functions for Iranian Academic Calendar (Samad) and Persian dates.
 The Samad system week starts on Saturday at 00:00:00.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 import jdatetime
+
+TEHRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 PERSIAN_WEEKDAYS = {
     0: "دوشنبه",
@@ -40,6 +42,16 @@ def to_persian_day_name(name: str) -> str:
 def get_persian_weekday_name(dt: datetime) -> str:
     """Returns the Persian weekday name for a Gregorian datetime."""
     return PERSIAN_WEEKDAYS.get(dt.weekday(), "")
+
+
+def get_tehran_today_info() -> dict:
+    """Returns Tehran today info (iso_date, jalali_str, day_name)."""
+    now_tehran = datetime.now(TEHRAN_TZ)
+    return {
+        "iso_date": now_tehran.strftime("%Y-%m-%d"),
+        "jalali_str": to_jalali_str(now_tehran),
+        "day_name": get_persian_weekday_name(now_tehran),
+    }
 
 
 def to_jalali_str(dt: datetime, include_time: bool = False) -> str:
